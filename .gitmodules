@@ -1,0 +1,6 @@
+[submodule "external/rapidjson"]
+	path = external/rapidjson
+	url = https://github.com/gibme-c/rapidjson
+[submodule "external/uint256_t"]
+	path = external/uint256_t
+	url = https://github.com/gibme-c/uint256_t.git
