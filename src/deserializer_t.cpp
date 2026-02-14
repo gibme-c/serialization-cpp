@@ -57,6 +57,11 @@ namespace Serialization
     {
         const auto start = offset;
 
+        if (start > buffer.size() || count > buffer.size() - start)
+        {
+            throw std::range_error("not enough data to complete read request");
+        }
+
         if (!peek)
         {
             offset += count;
@@ -94,6 +99,11 @@ namespace Serialization
 
     void deserializer_t::skip(size_t count)
     {
+        if (offset > buffer.size() || count > buffer.size() - offset)
+        {
+            throw std::range_error("skip would exceed buffer size");
+        }
+
         offset += count;
     }
 
@@ -106,83 +116,98 @@ namespace Serialization
     {
         const auto start = offset;
 
+        const auto result = unpack<unsigned char>(buffer, start);
+
         if (!peek)
         {
             offset += sizeof(unsigned char);
         }
 
-        return unpack<unsigned char>(buffer, start);
+        return result;
     }
 
     uint16_t deserializer_t::uint16(bool peek, bool big_endian)
     {
         const auto start = offset;
 
+        const auto result = unpack<uint16_t>(buffer, start, big_endian);
+
         if (!peek)
         {
             offset += sizeof(uint16_t);
         }
 
-        return unpack<uint16_t>(buffer, start, big_endian);
+        return result;
     }
 
     uint32_t deserializer_t::uint32(bool peek, bool big_endian)
     {
         const auto start = offset;
 
+        const auto result = unpack<uint32_t>(buffer, start, big_endian);
+
         if (!peek)
         {
             offset += sizeof(uint32_t);
         }
 
-        return unpack<uint32_t>(buffer, start, big_endian);
+        return result;
     }
 
     uint64_t deserializer_t::uint64(bool peek, bool big_endian)
     {
         const auto start = offset;
 
+        const auto result = unpack<uint64_t>(buffer, start, big_endian);
+
         if (!peek)
         {
             offset += sizeof(uint64_t);
         }
 
-        return unpack<uint64_t>(buffer, start, big_endian);
+        return result;
     }
 
     uint128_t deserializer_t::uint128(bool peek, bool big_endian)
     {
         const auto start = offset;
 
+        const auto result = unpack<uint128_t>(buffer, start, big_endian);
+
         if (!peek)
         {
             offset += sizeof(uint128_t);
         }
 
-        return unpack<uint128_t>(buffer, start, big_endian);
+        return result;
     }
 
     uint256_t deserializer_t::uint256(bool peek, bool big_endian)
     {
         const auto start = offset;
 
+        const auto result = unpack<uint256_t>(buffer, start, big_endian);
+
         if (!peek)
         {
             offset += sizeof(uint256_t);
         }
 
-        return unpack<uint256_t>(buffer, start, big_endian);
+        return result;
     }
 
     size_t deserializer_t::unread_bytes() const
     {
-        const auto unread = buffer.size() - offset;
-
-        return (unread >= 0) ? unread : 0;
+        return (offset <= buffer.size()) ? buffer.size() - offset : 0;
     }
 
     std::vector<unsigned char> deserializer_t::unread_data() const
     {
+        if (offset >= buffer.size())
+        {
+            return {};
+        }
+
         return {buffer.begin() + offset, buffer.end()};
     }
 } // namespace Serialization

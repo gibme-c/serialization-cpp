@@ -35,9 +35,8 @@
 #include <rapidjson/writer.h>
 #include <stdexcept>
 
-/**
- * JSON Helpers for repetitive code
- */
+// -- Validation macros: throw with a helpful message if the JSON value is the wrong type --
+
 #define JSON_TYPE_NAME kTypeNames[j.GetType()]
 #define JSON_STRING_OR_THROW()                                                             \
     if (!j.IsString())                                                                     \
@@ -57,8 +56,10 @@
         throw std::invalid_argument(std::string(value) + " not found in JSON object"); \
     }
 
+/** Check if a field exists before trying to load it (use inside fromJSON). */
 #define JSON_IF_MEMBER(field) if (has_member(j, #field))
 
+/** Generates constructors that build the object from a JSON object or a named key within one. */
 #define JSON_OBJECT_CONSTRUCTOR(objtype, funccall)        \
     explicit objtype(const JSONValue &j)                  \
     {                                                     \
@@ -73,6 +74,7 @@
         funccall(j);                                      \
     }
 
+/** Same as JSON_OBJECT_CONSTRUCTOR but expects a JSON string value instead. */
 #define JSON_STRING_CONSTRUCTOR(objtype, funccall)        \
     explicit objtype(const JSONValue &j)                  \
     {                                                     \
@@ -87,21 +89,36 @@
         funccall(j);                                      \
     }
 
+// -- Method signature macros: use these to declare your fromJSON / toJSON methods --
+
+/** Declares: void name(const JSONValue &j) */
 #define JSON_FROM_FUNC(name) void name(const JSONValue &j)
+/** Declares: void name(const JSONValue &val, const std::string &key) */
 #define JSON_FROM_KEY_FUNC(name) void name(const JSONValue &val, const std::string &key)
+/** Declares: void name(Writer &writer) const */
 #define JSON_TO_FUNC(name) void name(rapidjson::Writer<rapidjson::StringBuffer> &writer) const
+
+// -- Writer setup / teardown macros --
+
+/** Creates a StringBuffer + Writer pair (named `buffer` and `writer`). */
 #define JSON_INIT()                 \
     rapidjson::StringBuffer buffer; \
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer)
 
+/** Same as JSON_INIT but lets you pick the variable names. */
 #define JSON_INIT_BUFFER(buffer, writer) \
     rapidjson::StringBuffer buffer;      \
     rapidjson::Writer<rapidjson::StringBuffer> writer(buffer)
 
+/** Grabs the finished JSON string from the buffer (named `str`). */
 #define JSON_DUMP(str) const std::string str = buffer.GetString()
 
+/** Same as JSON_DUMP but with custom buffer name. */
 #define JSON_DUMP_BUFFER(buffer, str) const std::string str = (buffer).GetString()
 
+// -- Parsing macros --
+
+/** Parses a JSON string into a Document called `body`. Throws on invalid JSON. */
 #define JSON_PARSE(json)                                     \
     rapidjson::Document body;                                \
     if (body.Parse((json).c_str()).HasParseError())          \
@@ -109,6 +126,7 @@
         throw std::invalid_argument("Could not parse JSON"); \
     }
 
+/** Same as JSON_PARSE but lets you pick the variable names. */
 #define STR_TO_JSON(str, body)                               \
     rapidjson::Document body;                                \
     if ((body).Parse((str).c_str()).HasParseError())         \
@@ -116,6 +134,10 @@
         throw std::invalid_argument("Could not parse JSON"); \
     }
 
+// -- Field loading macros: use inside fromJSON() to pull fields by name --
+// The JSON key must match the C++ field name exactly.
+
+/** Loads a Serializable field -- calls field.fromJSON(j, "field"). */
 #define LOAD_KEY_FROM_JSON(field)    \
     {                                \
         JSON_MEMBER_OR_THROW(#field) \
@@ -123,6 +145,7 @@
         (field).fromJSON(j, #field); \
     }
 
+/** Loads a vector of Serializable objects from a JSON array field. */
 #define LOAD_KEYV_FROM_JSON(field, type)                   \
     {                                                      \
         JSON_MEMBER_OR_THROW(#field)                       \
@@ -134,6 +157,7 @@
         }                                                  \
     }
 
+/** Loads a nested (2D) vector of Serializable objects from a JSON array-of-arrays field. */
 #define LOAD_KEYVV_FROM_JSON(field, type)                    \
     {                                                        \
         JSON_MEMBER_OR_THROW(#field)                         \
@@ -150,36 +174,44 @@
         }                                                    \
     }
 
+/** Loads a std::string field from JSON. */
 #define LOAD_STRING_FROM_JSON(field)          \
     {                                         \
         JSON_MEMBER_OR_THROW(#field);         \
         (field) = get_json_string(j, #field); \
     }
 
+/** Loads a bool field from JSON. */
 #define LOAD_BOOL_FROM_JSON(field)          \
     {                                       \
         JSON_MEMBER_OR_THROW(#field);       \
         (field) = get_json_bool(j, #field); \
     }
 
+/** Loads a uint64_t field from JSON. */
 #define LOAD_U64_FROM_JSON(field)               \
     {                                           \
         JSON_MEMBER_OR_THROW(#field);           \
         (field) = get_json_uint64_t(j, #field); \
     }
 
+/** Loads a uint32_t field from JSON. */
 #define LOAD_U32_FROM_JSON(field)               \
     {                                           \
         JSON_MEMBER_OR_THROW(#field);           \
         (field) = get_json_uint32_t(j, #field); \
     }
 
+// -- Field writing macros: use inside toJSON() to write fields by name --
+
+/** Writes a Serializable field as "field": <value>. */
 #define KEY_TO_JSON(field)      \
     {                           \
         writer.Key(#field);     \
         (field).toJSON(writer); \
     }
 
+/** Writes a vector of Serializable objects as a JSON array. */
 #define KEYV_TO_JSON(field)                 \
     {                                       \
         writer.Key(#field);                 \
@@ -193,6 +225,7 @@
         writer.EndArray();                  \
     }
 
+/** Writes a nested (2D) vector as a JSON array of arrays. */
 #define KEYVV_TO_JSON(field)                       \
     {                                              \
         writer.Key(#field);                        \
@@ -213,24 +246,28 @@
         writer.EndArray();                         \
     }
 
+/** Writes a uint64_t field. */
 #define U64_TO_JSON(field)    \
     {                         \
         writer.Key(#field);   \
         writer.Uint64(field); \
     }
 
+/** Writes a uint32_t field. */
 #define U32_TO_JSON(field)  \
     {                       \
         writer.Key(#field); \
         writer.Uint(field); \
     }
 
+/** Writes a std::string field. */
 #define STRING_TO_JSON(field) \
     {                         \
         writer.Key(#field);   \
         writer.String(field); \
     }
 
+/** Writes a bool field. */
 #define BOOL_TO_JSON(field) \
     {                       \
         writer.Key(#field); \
@@ -247,13 +284,9 @@ typedef rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllo
 
 static const std::string kTypeNames[] = {"Null", "False", "True", "Object", "Array", "String", "Number", "Double"};
 
-/**
- * Checks if the specified property is in the value/document provided
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+// -- Typed getter functions for pulling values out of RapidJSON documents --
+
+/** Returns true if the JSON object has a key with the given name. */
 template<typename T> bool has_member(const T &j, const std::string &key)
 {
     const auto val = j.FindMember(key);
@@ -261,13 +294,7 @@ template<typename T> bool has_member(const T &j, const std::string &key)
     return val != j.MemberEnd();
 }
 
-/**
- * Retrieves the value at the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets the raw JSON value at the given key. Throws if the key is missing. */
 template<typename T> const rapidjson::Value &get_json_value(const T &j, const std::string &key)
 {
     const auto val = j.FindMember(key);
@@ -280,12 +307,7 @@ template<typename T> const rapidjson::Value &get_json_value(const T &j, const st
     return val->value;
 }
 
-/**
- * Retrieves a boolean from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a bool from a JSON value. Throws if it's not a bool. */
 template<typename T> bool get_json_bool(const T &j)
 {
     if (!j.IsBool())
@@ -296,13 +318,7 @@ template<typename T> bool get_json_bool(const T &j)
     return j.GetBool();
 }
 
-/**
- * Retrieves a boolean from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a bool from a named key in a JSON object. */
 template<typename T> bool get_json_bool(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -310,12 +326,7 @@ template<typename T> bool get_json_bool(const T &j, const std::string &key)
     return get_json_bool(val);
 }
 
-/**
- * Retrieves an int64_t from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets an int64_t from a JSON value. Throws on type mismatch. */
 template<typename T> int64_t get_json_int64_t(const T &j)
 {
     if (!j.IsInt64())
@@ -326,13 +337,7 @@ template<typename T> int64_t get_json_int64_t(const T &j)
     return j.GetInt64();
 }
 
-/**
- * Retrieves an int64_t from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets an int64_t from a named key in a JSON object. */
 template<typename T> int64_t get_json_int64_t(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -340,12 +345,7 @@ template<typename T> int64_t get_json_int64_t(const T &j, const std::string &key
     return get_json_int64_t(val);
 }
 
-/**
- * Retrieves an uint64_t from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a uint64_t from a JSON value. Throws on type mismatch. */
 template<typename T> uint64_t get_json_uint64_t(const T &j)
 {
     if (!j.IsUint64())
@@ -356,13 +356,7 @@ template<typename T> uint64_t get_json_uint64_t(const T &j)
     return j.GetUint64();
 }
 
-/**
- * Retrieves an uint64_t from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a uint64_t from a named key in a JSON object. */
 template<typename T> uint64_t get_json_uint64_t(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -370,12 +364,7 @@ template<typename T> uint64_t get_json_uint64_t(const T &j, const std::string &k
     return get_json_uint64_t(val);
 }
 
-/**
- * Retrieves an uint32_t from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a uint32_t from a JSON value. Throws on type mismatch. */
 template<typename T> uint32_t get_json_uint32_t(const T &j)
 {
     if (!j.IsUint())
@@ -386,13 +375,7 @@ template<typename T> uint32_t get_json_uint32_t(const T &j)
     return j.GetUint();
 }
 
-/**
- * Retrieves an uint32_t from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a uint32_t from a named key in a JSON object. */
 template<typename T> uint32_t get_json_uint32_t(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -400,12 +383,7 @@ template<typename T> uint32_t get_json_uint32_t(const T &j, const std::string &k
     return get_json_uint32_t(val);
 }
 
-/**
- * Retrieves a double from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a double from a JSON value. Throws on type mismatch. */
 template<typename T> double get_json_double(const T &j)
 {
     if (!j.IsDouble())
@@ -416,13 +394,7 @@ template<typename T> double get_json_double(const T &j)
     return j.GetDouble();
 }
 
-/**
- * Retrieves a double from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a double from a named key in a JSON object. */
 template<typename T> double get_json_double(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -430,12 +402,7 @@ template<typename T> double get_json_double(const T &j, const std::string &key)
     return get_json_double(val);
 }
 
-/**
- * Retrieves a std::string from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a string from a JSON value. Throws on type mismatch. */
 template<typename T> std::string get_json_string(const T &j)
 {
     if (!j.IsString())
@@ -447,13 +414,7 @@ template<typename T> std::string get_json_string(const T &j)
     return j.GetString();
 }
 
-/**
- * Retrieves a std::string from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a string from a named key in a JSON object. */
 template<typename T> std::string get_json_string(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -461,12 +422,7 @@ template<typename T> std::string get_json_string(const T &j, const std::string &
     return get_json_string(val);
 }
 
-/**
- * Retrieves an array from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a JSON array. Throws if the value isn't an array. */
 template<typename T> auto get_json_array(const T &j)
 {
     if (!j.IsArray())
@@ -477,13 +433,7 @@ template<typename T> auto get_json_array(const T &j)
     return j.GetArray();
 }
 
-/**
- * Retrieves an array from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a JSON array from a named key in a JSON object. */
 template<typename T> auto get_json_array(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);
@@ -491,12 +441,7 @@ template<typename T> auto get_json_array(const T &j, const std::string &key)
     return get_json_array(val);
 }
 
-/**
- * Retrieves an object from the given value
- * @tparam T
- * @param j
- * @return
- */
+/** Gets a JSON object. Throws if the value isn't an object. */
 template<typename T> JSONObject get_json_object(const T &j)
 {
     if (!j.IsObject())
@@ -507,13 +452,7 @@ template<typename T> JSONObject get_json_object(const T &j)
     return j.Get_Object();
 }
 
-/**
- * Retrieves an object from the value in the given property
- * @tparam T
- * @param j
- * @param key
- * @return
- */
+/** Gets a JSON object from a named key in a JSON object. */
 template<typename T> JSONObject get_json_object(const T &j, const std::string &key)
 {
     const auto &val = get_json_value(j, key);

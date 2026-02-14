@@ -43,12 +43,12 @@ namespace Serialization
         buffer = input;
     }
 
-    unsigned char &serializer_t::operator[](int i)
+    unsigned char &serializer_t::operator[](size_t i)
     {
         return buffer[i];
     }
 
-    unsigned char serializer_t::operator[](int i) const
+    unsigned char serializer_t::operator[](size_t i) const
     {
         return buffer[i];
     }
@@ -67,6 +67,11 @@ namespace Serialization
 
     void serializer_t::bytes(const void *data, size_t length)
     {
+        if (data == nullptr && length > 0)
+        {
+            throw std::invalid_argument("cannot read bytes from null pointer");
+        }
+
         auto const *raw = static_cast<unsigned char const *>(data);
 
         for (size_t i = 0; i < length; ++i)

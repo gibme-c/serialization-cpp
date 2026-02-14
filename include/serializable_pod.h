@@ -27,18 +27,21 @@
 #ifndef SERIALIZATION_SERIALIZABLE_POD_H
 #define SERIALIZATION_SERIALIZABLE_POD_H
 
+#include <ostream>
 #include <serializable.h>
 
+/**
+ * A fixed-size byte array (default 32 bytes) that implements Serializable. Great for
+ * things like hashes, keys, or any fixed-width binary blob. Displays as hex, securely
+ * erases its memory on destruction, and supports comparison operators out of the box.
+ * Override load_hook() if you need custom logic after deserialization.
+ */
 template<unsigned int SIZE = 32> struct SerializablePod : Serializable
 {
   public:
     SerializablePod() = default;
 
-    /**
-     * Constructs the pod from the supplied hex encoded string
-     *
-     * @param value
-     */
+    /** Constructs from a hex string (must decode to exactly SIZE bytes). */
     explicit SerializablePod(const std::string &value)
     {
         from_string(value);
@@ -46,26 +49,22 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
 
     ~SerializablePod()
     {
-        secure_erase(bytes, sizeof(bytes));
+        serialization_secure_erase(bytes, sizeof(bytes));
     }
 
-    /**
-     * Overloading of standard operators to make operations using this structure
-     * to use a lot cleaner syntactic sugar in downstream code. These should generally
-     * be overwritten if the internal structure is different than the default.
-     */
+    // -- Operators: override these if your subclass has a different internal layout --
 
     virtual unsigned char *operator*()
     {
         return bytes;
     }
 
-    virtual unsigned char &operator[](int i)
+    virtual unsigned char &operator[](size_t i)
     {
         return bytes[i];
     }
 
-    virtual unsigned char operator[](int i) const
+    virtual unsigned char operator[](size_t i) const
     {
         return bytes[i];
     }
@@ -126,21 +125,13 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         return (*this == other) || (*this > other);
     }
 
-    /**
-     * Returns a pointer to the underlying data structure
-     *
-     * @return
-     */
+    /** Direct pointer to the raw byte array. */
     [[nodiscard]] virtual const unsigned char *data() const
     {
         return bytes;
     }
 
-    /**
-     * Deserializes the pod from the supplied vector of unsigned char (bytes)
-     *
-     * @param data
-     */
+    /** Loads from a byte vector (must be exactly SIZE bytes). Calls load_hook() afterward. */
     void deserialize(const std::vector<unsigned char> &data) override
     {
         if (data.size() != sizeof(bytes))
@@ -153,11 +144,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         load_hook();
     }
 
-    /**
-     * Deserializes the pod from the supplied reader
-     *
-     * @param reader
-     */
+    /** Reads SIZE bytes from a deserializer_t and loads them. */
     void deserialize(Serialization::deserializer_t &reader) override
     {
         const auto data = reader.bytes(sizeof(bytes));
@@ -165,21 +152,13 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         deserialize(data);
     }
 
-    /**
-     * Returns if the structure is empty (unset)
-     *
-     * @return
-     */
+    /** True if all bytes are zero (i.e., never been set). */
     [[nodiscard]] virtual bool empty() const
     {
         return *this == SerializablePod<SIZE>();
     }
 
-    /**
-     * Loads the pod from a JSON value
-     *
-     * @param j
-     */
+    /** Loads from a JSON string value (expects hex). */
     JSON_FROM_FUNC(fromJSON) override
     {
         JSON_STRING_OR_THROW()
@@ -187,11 +166,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         from_string(j.GetString());
     }
 
-    /**
-     * Loads the pod from a JSON value in the specified key of the JSON object
-     * @param val
-     * @param key
-     */
+    /** Loads from a named key inside a JSON object. */
     JSON_FROM_KEY_FUNC(fromJSON) override
     {
         if (!has_member(val, std::string(key)))
@@ -204,51 +179,31 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         fromJSON(j);
     }
 
-    /**
-     * Serializes the pod into bytes using the supplied serializer_t instance
-     *
-     * @param writer
-     */
+    /** Writes the raw bytes into a serializer_t. */
     void serialize(Serialization::serializer_t &writer) const override
     {
         writer.bytes(bytes, sizeof(bytes));
     }
 
-    /**
-     * Returns the pod as a vector of unsigned chars (bytes)
-     *
-     * @return
-     */
+    /** Returns the raw bytes as a vector. */
     [[nodiscard]] std::vector<unsigned char> serialize() const override
     {
         return {std::begin(bytes), std::end(bytes)};
     }
 
-    /**
-     * Returns the size of the data in the pod
-     *
-     * @return
-     */
+    /** Always returns SIZE (the fixed byte count). */
     [[nodiscard]] size_t size() const override
     {
         return sizeof(bytes);
     }
 
-    /**
-     * Writes the pod to the to the supplied json writer as a string
-     *
-     * @param writer
-     */
+    /** Writes as a hex string to the JSON writer. */
     JSON_TO_FUNC(toJSON) override
     {
         writer.String(to_string());
     }
 
-    /**
-     * Returns the pod as a hex encoded string
-     *
-     * @return
-     */
+    /** Returns the bytes as a hex string. */
     [[nodiscard]] std::string to_string() const override
     {
         const auto data = serialize();
@@ -257,11 +212,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
     }
 
   protected:
-    /**
-     * Loads the POD from a hex encoded string
-     *
-     * @param str
-     */
+    /** Decodes a hex string and loads it into the byte array. */
     void from_string(const std::string &str)
     {
         const auto input = Serialization::from_hex(str);
@@ -276,26 +227,19 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         load_hook();
     }
 
-    /**
-     * Hook that's called after loading the pod from a string and other methods
-     */
+    /** Called after any load/deserialize. Override this for post-load validation or setup. */
     virtual void load_hook() {}
 
     unsigned char bytes[SIZE] = {0};
 };
 
-/**
- * Providing overloads into the std namespace such that we can easily included
- * points, scalars, and signatures in output streams
- */
-namespace std
+/** Lets you use SerializablePod with std::cout and friends. */
+template<unsigned int SIZE>
+inline std::ostream &operator<<(std::ostream &os, const SerializablePod<SIZE> &value)
 {
-    template<unsigned int SIZE> inline ostream &operator<<(ostream &os, const SerializablePod<SIZE> &value)
-    {
-        os << value.to_string();
+    os << value.to_string();
 
-        return os;
-    }
-} // namespace std
+    return os;
+}
 
 #endif

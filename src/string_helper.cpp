@@ -100,6 +100,11 @@ namespace Serialization
 
     std::string str_join(const std::vector<std::string> &input, const char &ch)
     {
+        if (input.empty())
+        {
+            return {};
+        }
+
         std::string result;
 
         for (const auto &part : input)

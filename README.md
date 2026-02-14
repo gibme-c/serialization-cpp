@@ -14,7 +14,7 @@ The following *features* have been baked into this library:
 * Includes an abstract `SerializablePod<#>` that creates a structured wrapper around a C++ POD
   * Templated constructor for various underlying byte size(s)
   * For more complex data structures, most methods should be overridden (or build your own)
-* Includes a `secure_erase()` method that sets the underlying data storage to 0s without being optimized
+* Includes a `serialization_secure_erase()` method that sets the underlying data storage to 0s without being optimized
   away by the compiler
 * Includes various string helper methods such as:
   * `from_hex()` converts a hex encoded string to a vector of unsigned char (bytes)

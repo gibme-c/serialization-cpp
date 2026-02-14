@@ -33,56 +33,22 @@
 
 namespace Serialization
 {
-    /**
-     * Converts a hexadecimal string to a vector of unsigned char
-     *
-     * @param text
-     * @return
-     */
+    /** Decodes a hex string (e.g. "4a6f") into raw bytes. */
     std::vector<unsigned char> from_hex(const std::string &text);
 
-    /**
-     * Converts a void pointer of the given length into a hexadecimal string
-     *
-     * @param data
-     * @param length
-     * @return
-     */
+    /** Encodes raw bytes into a lowercase hex string. */
     std::string to_hex(const void *data, size_t length);
 
-    /**
-     * Joins a vector of strings together using the specified character as the delimiter
-     *
-     * @param input
-     * @param ch
-     * @return
-     */
+    /** Joins strings with a delimiter character (default: space). */
     std::string str_join(const std::vector<std::string> &input, const char &ch = ' ');
 
-    /**
-     * Pads a string with blank spaces up to the specified length
-     *
-     * @param input
-     * @param length
-     * @return
-     */
+    /** Right-pads a string with spaces to reach the given length. */
     std::string str_pad(std::string input, size_t length = 0);
 
-    /**
-     * Splits a string into a vector of strings using the specified character as a delimiter
-     *
-     * @param input
-     * @param ch
-     * @return
-     */
+    /** Splits a string on a delimiter character (default: space). */
     std::vector<std::string> str_split(const std::string &input, const char &ch = ' ');
 
-    /**
-     * Trims any whitespace from both the start and end of the given string
-     *
-     * @param str
-     * @param to_lowercase
-     */
+    /** Trims whitespace from both ends. Optionally lowercases the whole thing. */
     void str_trim(std::string &str, bool to_lowercase = false);
 
 } // namespace Serialization

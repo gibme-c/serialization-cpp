@@ -29,6 +29,10 @@
 
 #include <serializable.h>
 
+/**
+ * A serializable wrapper around std::vector<Type> where Type itself must be Serializable.
+ * Handles binary serialization, JSON array conversion, and hex string round-tripping.
+ */
 template<typename Type> struct SerializableVector : Serializable
 {
   public:
@@ -36,11 +40,7 @@ template<typename Type> struct SerializableVector : Serializable
 
     JSON_OBJECT_CONSTRUCTOR(SerializableVector, fromJSON);
 
-    /**
-     * Constructs the structure from the supplied hex encoded string
-     *
-     * @param value
-     */
+    /** Constructs from a hex string by deserializing the decoded bytes. */
     explicit SerializableVector(const std::string &value)
     {
         from_string(value);
@@ -66,41 +66,25 @@ template<typename Type> struct SerializableVector : Serializable
         return !(*this == other);
     }
 
-    /**
-     * Alias of struct::container::push_back()
-     *
-     * @param value
-     */
+    /** Adds an element to the end. */
     void append(const Type &value)
     {
         container.push_back(value);
     }
 
-    /**
-     * Alias of struct:container::back()
-     *
-     * @return
-     */
+    /** Returns the last element. */
     [[nodiscard]] Type back() const
     {
         return container.back();
     }
 
-    /**
-     * Deserializes the structure from a deserializer_t
-     *
-     * @param reader
-     */
+    /** Reads a varint-prefixed list of elements from a deserializer_t. */
     void deserialize(Serialization::deserializer_t &reader) override
     {
         container = reader.podV<Type>();
     }
 
-    /**
-     * Deserializes the structure from a std::vector<unsigned char>
-     *
-     * @param data
-     */
+    /** Reads from a raw byte vector. */
     void deserialize(const std::vector<unsigned char> &data) override
     {
         auto reader = Serialization::deserializer_t(data);
@@ -108,11 +92,7 @@ template<typename Type> struct SerializableVector : Serializable
         deserialize(reader);
     }
 
-    /**
-     * Appends the provided vector to the end of the underlying container
-     *
-     * @param values
-     */
+    /** Appends all elements from a vector to the end. */
     void extend(const std::vector<Type> &values)
     {
         for (const auto &value : values)
@@ -121,21 +101,13 @@ template<typename Type> struct SerializableVector : Serializable
         }
     }
 
-    /**
-     * Appends the provided vector to the end of the underlying container
-     *
-     * @param value
-     */
+    /** Appends all elements from another SerializableVector to the end. */
     void extend(const SerializableVector<Type> &value)
     {
         extend(value.container);
     }
 
-    /**
-     * Loads the structure from JSON
-     *
-     * @param j
-     */
+    /** Populates from a JSON array -- each element is constructed as Type(elem). */
     JSON_FROM_FUNC(fromJSON) override
     {
         container.clear();
@@ -148,12 +120,7 @@ template<typename Type> struct SerializableVector : Serializable
         }
     }
 
-    /**
-     * Loads the pod from a JSON value in the specified key of the JSON object
-     *
-     * @param val
-     * @param key
-     */
+    /** Populates from a named key inside a JSON object. */
     JSON_FROM_KEY_FUNC(fromJSON) override
     {
         if (!has_member(val, std::string(key)))
@@ -166,21 +133,13 @@ template<typename Type> struct SerializableVector : Serializable
         fromJSON(j);
     }
 
-    /**
-     * Serializes the structure using the supplied serializer_t
-     *
-     * @param writer
-     */
+    /** Writes a varint count followed by each element into the serializer. */
     void serialize(Serialization::serializer_t &writer) const override
     {
         writer.pod(container);
     }
 
-    /**
-     * Serializes the structure to a std::vector<unsigned char>
-     *
-     * @return
-     */
+    /** Returns the serialized bytes. */
     [[nodiscard]] std::vector<unsigned char> serialize() const override
     {
         auto writer = Serialization::serializer_t();
@@ -190,24 +149,13 @@ template<typename Type> struct SerializableVector : Serializable
         return writer.vector();
     }
 
-    /**
-     * Returns the size of the structure
-     *
-     * Note: unlike other structures, this returns the size of (ie. the number of elements in)
-     * the underlying container
-     *
-     * @return
-     */
+    /** Returns the element count (not byte size). */
     [[nodiscard]] size_t size() const override
     {
         return container.size();
     }
 
-    /**
-     * Serializes the structure to JSON
-     *
-     * @param writer
-     */
+    /** Writes as a JSON array with each element calling its own toJSON(). */
     void toJSON(rapidjson::Writer<rapidjson::StringBuffer> &writer) const override
     {
         writer.StartArray();
@@ -220,11 +168,7 @@ template<typename Type> struct SerializableVector : Serializable
         writer.EndArray();
     }
 
-    /**
-     * Returns the structure as a string
-     *
-     * @return
-     */
+    /** Returns the serialized bytes as a hex string. */
     [[nodiscard]] std::string to_string() const override
     {
         const auto data = serialize();

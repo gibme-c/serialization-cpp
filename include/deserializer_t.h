@@ -32,6 +32,11 @@
 
 namespace Serialization
 {
+    /**
+     * Reads typed values from a byte buffer using an internal cursor. Each read advances
+     * the cursor unless peek=true. Call the typed methods in the same order they were
+     * written by serializer_t to get your data back.
+     */
     struct deserializer_t final
     {
         explicit deserializer_t(const serializer_t &writer);
@@ -40,49 +45,25 @@ namespace Serialization
 
         explicit deserializer_t(const std::vector<unsigned char> &input);
 
+        /** Accepts a hex string, decodes it to bytes, then reads from that. */
         explicit deserializer_t(const std::string &input);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @return
-         */
+        /** Reads a single boolean (one byte). */
         bool boolean(bool peek = false);
 
-        /**
-         * Returns a byte vector of the given length from the byte vector
-         * @param count
-         * @param peek
-         * @return
-         */
+        /** Reads the next `count` raw bytes from the buffer. */
         std::vector<unsigned char> bytes(size_t count = 1, bool peek = false);
 
-        /**
-         * Trims read dead from the byte vector thus reducing its memory footprint
-         */
+        /** Drops already-read bytes from memory to free up space. */
         void compact();
 
-        /**
-         * Returns a pointer to the underlying structure data
-         * @return
-         */
+        /** Direct pointer to the underlying buffer data. */
         [[nodiscard]] const unsigned char *data() const;
 
-        /**
-         * Decodes a hex encoded string of the given length from the byte vector
-         * @param length
-         * @param peek
-         * @return
-         */
+        /** Reads `length` bytes and returns them as a hex string. */
         std::string hex(size_t length = 1, bool peek = false);
 
-        /**
-         * Decodes a value from the byte vector
-         *
-         * @tparam Type
-         * @param peek
-         * @return
-         */
+        /** Reads a single Serializable object by size, then calls its deserialize(). */
         template<typename Type> Type pod(bool peek = false)
         {
             Type result;
@@ -94,13 +75,7 @@ namespace Serialization
             return result;
         }
 
-        /**
-         * Decodes a vector of values from the byte vector
-         *
-         * @tparam Type
-         * @param peek
-         * @return
-         */
+        /** Reads a varint-prefixed vector of Serializable objects. */
         template<typename Type> std::vector<Type> podV(bool peek = false)
         {
             const auto start = offset;
@@ -124,13 +99,7 @@ namespace Serialization
             return result;
         }
 
-        /**
-         * Decodes a nested vector of values from the byte vector
-         *
-         * @tparam Type
-         * @param peek
-         * @return
-         */
+        /** Reads a varint-prefixed nested (2D) vector of Serializable objects. */
         template<typename Type> std::vector<std::vector<Type>> podVV(bool peek = false)
         {
             const auto start = offset;
@@ -161,84 +130,37 @@ namespace Serialization
             return result;
         }
 
-        /**
-         * Resets the reader to the given position (default 0)
-         * @param position
-         */
+        /** Moves the read cursor back to the given position (default: the beginning). */
         void reset(size_t position = 0);
 
-        /**
-         * Use this method instead of sizeof() to get the resulting
-         * size of the structure in bytes
-         * @return
-         */
+        /** Total size of the buffer in bytes. Use this instead of sizeof(). */
         [[nodiscard]] size_t size() const;
 
-        /**
-         * Skips the next specified bytes while reading
-         * @param count
-         */
+        /** Jumps the cursor forward by `count` bytes without returning anything. */
         void skip(size_t count = 1);
 
-        /**
-         * Returns the hex encoding of the underlying byte vector
-         * @return
-         */
+        /** Returns the entire buffer as a hex string. */
         [[nodiscard]] std::string to_string() const;
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @return
-         */
+        /** Reads a single byte. */
         unsigned char uint8(bool peek = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @param big_endian
-         * @return
-         */
+        /** Reads a 16-bit unsigned int. Pass big_endian=true to flip the byte order. */
         uint16_t uint16(bool peek = false, bool big_endian = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @param big_endian
-         * @return
-         */
+        /** Reads a 32-bit unsigned int. Pass big_endian=true to flip the byte order. */
         uint32_t uint32(bool peek = false, bool big_endian = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @param big_endian
-         * @return
-         */
+        /** Reads a 64-bit unsigned int. Pass big_endian=true to flip the byte order. */
         uint64_t uint64(bool peek = false, bool big_endian = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @param big_endian
-         * @return
-         */
+        /** Reads a 128-bit unsigned int. Pass big_endian=true to flip the byte order. */
         uint128_t uint128(bool peek = false, bool big_endian = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @param peek
-         * @param big_endian
-         * @return
-         */
+        /** Reads a 256-bit unsigned int. Pass big_endian=true to flip the byte order. */
         uint256_t uint256(bool peek = false, bool big_endian = false);
 
-        /**
-         * Decodes a value from the byte vector
-         * @tparam Type
-         * @param peek
-         * @return
-         */
+        /** Reads a variable-length encoded integer. */
         template<typename Type> Type varint(bool peek = false)
         {
             const auto start = offset;
@@ -253,12 +175,7 @@ namespace Serialization
             return result;
         }
 
-        /**
-         * Decodes a vector of values from the byte vector
-         * @tparam Type
-         * @param peek
-         * @return
-         */
+        /** Reads a varint-prefixed vector of varints. */
         template<typename Type> std::vector<Type> varintV(bool peek = false)
         {
             const auto start = offset;
@@ -282,16 +199,10 @@ namespace Serialization
             return result;
         }
 
-        /**
-         * Returns the remaining number of bytes that have not been read from the byte vector
-         * @return
-         */
+        /** How many bytes are left to read. */
         [[nodiscard]] size_t unread_bytes() const;
 
-        /**
-         * Returns a byte vector copy of the remaining number of bytes that have not been read from the byte vector
-         * @return
-         */
+        /** Returns a copy of the bytes that haven't been read yet. */
         [[nodiscard]] std::vector<unsigned char> unread_data() const;
 
       private:

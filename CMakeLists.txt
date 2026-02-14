@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10...3.31)
 
 if(DEFINED CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE ${CMAKE_BUILD_TYPE} CACHE STRING "Choose the type of build, options are: Debug, Release, RelWithDebInfo")
@@ -16,13 +16,7 @@ set(LIB_MINOR_VERSION "0")
 set(LIB_PATCH_VERSION "0")
 set(LIB_VERSION_STRING "${LIB_MAJOR_VERSION}.${LIB_MINOR_VERSION}.${LIB_PATCH_VERSION}")
 
-if(CMAKE_VERSION VERSION_LESS 3.0)
-    project(serializationcpp CXX)
-    enable_language(CXX)
-else()
-    cmake_policy(SET CMP0048 NEW)
-    project(serializationcpp VERSION "${LIB_VERSION_STRING}" LANGUAGES CXX)
-endif()
+project(serializationcpp VERSION "${LIB_VERSION_STRING}" LANGUAGES CXX)
 
 if(NOT MSVC)
     find_program(CCACHE_PROGRAM ccache)
@@ -37,7 +31,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set(CMAKE_SKIP_INSTALL_RULES OFF FORCE)
 set(CMAKE_SKIP_PACKAGE_ALL_DEPENDENCY ON FORCE)
 set(CMAKE_SUPPRESS_REGENERATION ON)
-set(CMAKE_POLICY_WARNING_CMP0048 OFF)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -140,7 +133,7 @@ set(INCLUDE_DIRECTORIES
 
 set(SOURCES
     src/deserializer_t.cpp
-    src/secure_erase.cpp
+    src/serialization_secure_erase.cpp
     src/serializer_t.cpp
     src/string_helper.cpp
 )
@@ -154,7 +147,11 @@ if(WIN32)
 endif()
 
 if(BUILD_TEST)
-    add_executable(serializationtest test/test.cpp)
-    target_link_libraries(serializationtest serialization-static)
-    set_property(TARGET serializationtest PROPERTY OUTPUT_NAME "serialization_test")
+    enable_testing()
+
+    add_executable(serialization-tests test/test.cpp)
+    target_link_libraries(serialization-tests serialization-static)
+    set_property(TARGET serialization-tests PROPERTY OUTPUT_NAME "serialization-tests")
+
+    add_test(NAME serialization-tests COMMAND serialization-tests)
 endif()

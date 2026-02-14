@@ -36,15 +36,11 @@
 
 namespace Serialization
 {
-    /**
-     * Packs the provided value into a byte vector
-     * @tparam Type
-     * @param value
-     * @param big_endian
-     * @return
-     */
+    /** Converts any fixed-size type into a byte vector (optionally big-endian). */
     template<typename Type> std::vector<unsigned char> pack(const Type &value, bool big_endian = false)
     {
+        static_assert(sizeof(Type) <= 64, "Type exceeds pack buffer size");
+
         unsigned char bytes[64] = {0};
 
         std::memcpy(&bytes, &value, sizeof(Type));
@@ -59,20 +55,13 @@ namespace Serialization
         return result;
     }
 
-    /**
-     * Unpacks a value from the provided byte vector starting at the given offset
-     * @tparam Type
-     * @param packed
-     * @param offset
-     * @param big_endian
-     * @return
-     */
+    /** Reads a fixed-size type back out of a byte vector at the given offset. */
     template<typename Type>
     Type unpack(const std::vector<unsigned char> &packed, size_t offset = 0, bool big_endian = false)
     {
         const auto size = sizeof(Type);
 
-        if (offset + size > packed.size())
+        if (size > packed.size() || offset > packed.size() - size)
         {
             throw std::range_error("not enough data to complete request");
         }
@@ -96,12 +85,7 @@ namespace Serialization
         return value;
     }
 
-    /**
-     * Encodes a value into a varint byte vector
-     * @tparam Type
-     * @param value
-     * @return
-     */
+    /** Encodes a value using variable-length encoding -- smaller values use fewer bytes. */
     template<typename Type> std::vector<unsigned char> encode_varint(const Type &value)
     {
         const auto max_length = sizeof(Type) + 2;
@@ -131,13 +115,7 @@ namespace Serialization
         return output;
     }
 
-    /**
-     * Decodes a value from the provided varint byte vector starting at the given offset
-     * @tparam Type
-     * @param packed
-     * @param offset
-     * @return
-     */
+    /** Decodes a varint from the byte vector at the given offset. Returns {value, bytes_consumed}. */
     template<typename Type>
     std::tuple<Type, size_t> decode_varint(const std::vector<unsigned char> &packed, const size_t offset = 0)
     {
@@ -162,6 +140,11 @@ namespace Serialization
             }
 
             b = packed[counter++];
+
+            if (shift >= sizeof(Type) * 8)
+            {
+                throw std::range_error("varint encoding exceeds type size");
+            }
 
             const auto value = (shift < 28) ? uint64_t(b & 0x7f) << shift : uint64_t(b & 0x7f) * (uint64_t(1) << shift);
 

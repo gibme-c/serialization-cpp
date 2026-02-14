@@ -95,9 +95,9 @@ jobs:
         if: matrix.os != 'windows-latest' || matrix.name == 'mingw-gcc'
         run: |
           cd build
-          ./serialization_test
+          ./serialization-tests
       - name: Unit Tests (Windows)
         if: matrix.os == 'windows-latest' && matrix.name == 'msvc'
         run: |
           cd build/Debug
-          ./serialization_test.exe
+          ./serialization-tests.exe

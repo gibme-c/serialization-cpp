@@ -29,12 +29,7 @@
 
 #include <cstring>
 
-/**
- * Wipes the pointer memory such that the entire pointer is filled with 0s
- *
- * @param pointer
- * @param length
- */
-void secure_erase(void *pointer, size_t length);
+/** Zeroes out memory in a way the compiler won't optimize away. Good for secrets. */
+void serialization_secure_erase(void *pointer, size_t length);
 
 #endif

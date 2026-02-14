@@ -24,13 +24,13 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include <secure_erase.h>
+#include <serialization_secure_erase.h>
 
 #ifdef _MSC_VER
 #include <windows.h>
 #endif
 
-void secure_erase(void *pointer, size_t length)
+void serialization_secure_erase(void *pointer, size_t length)
 {
 #ifdef _MSC_VER
     SecureZeroMemory(pointer, length);

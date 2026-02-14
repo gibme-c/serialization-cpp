@@ -34,6 +34,11 @@
 
 namespace Serialization
 {
+    /**
+     * Writes typed values into a byte buffer. Call the typed methods (uint8, uint32, bytes, etc.)
+     * in order, then grab the result with vector() or to_string(). The matching deserializer_t
+     * reads them back in the same order.
+     */
     struct serializer_t final
     {
         serializer_t() = default;
@@ -44,46 +49,26 @@ namespace Serialization
 
         explicit serializer_t(const std::vector<unsigned char> &input);
 
-        unsigned char &operator[](int i);
+        unsigned char &operator[](size_t i);
 
-        unsigned char operator[](int i) const;
+        unsigned char operator[](size_t i) const;
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         */
+        /** Writes a single boolean as one byte (0x00 or 0x01). */
         void boolean(bool value);
 
-        /**
-         * Encodes the value into the vector
-         * @param data
-         * @param length
-         */
+        /** Writes raw bytes from a pointer + length into the buffer. */
         void bytes(const void *data, size_t length);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         */
+        /** Writes the contents of a byte vector into the buffer. */
         void bytes(const std::vector<unsigned char> &value);
 
-        /**
-         * Returns a pointer to the underlying structure data
-         * @return
-         */
+        /** Direct pointer to the underlying buffer data. */
         [[nodiscard]] const unsigned char *data() const;
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         */
+        /** Decodes a hex string and writes the resulting bytes into the buffer. */
         void hex(const std::string &value);
 
-        /**
-         * Encodes the value into the vector
-         *
-         * @param value
-         */
+        /** Writes a single Serializable object by calling its serialize() method. */
         template<typename Type> void pod(const Type &value)
         {
             const auto bytes = value.serialize();
@@ -91,11 +76,7 @@ namespace Serialization
             extend(bytes);
         }
 
-        /**
-         * Encodes the vector of values into the vector
-         *
-         * @param values
-         */
+        /** Writes a vector of Serializable objects, prefixed with a varint count. */
         template<typename Type> void pod(const std::vector<Type> &values)
         {
             varint(values.size());
@@ -106,11 +87,7 @@ namespace Serialization
             }
         }
 
-        /**
-         * Encodes the nested vector of values into the vector
-         *
-         * @param values
-         */
+        /** Writes a nested (2D) vector of Serializable objects, each level prefixed with a varint count. */
         template<typename Type> void pod(const std::vector<std::vector<Type>> &values)
         {
             varint(values.size());
@@ -126,70 +103,34 @@ namespace Serialization
             }
         }
 
-        /**
-         * Clears the underlying byte vector
-         */
+        /** Clears the buffer so this writer can be reused. */
         void reset();
 
-        /**
-         * Use this method instead of sizeof() to get the resulting
-         * size of the structure in bytes
-         * @return
-         */
+        /** Number of bytes written so far. Use this instead of sizeof(). */
         [[nodiscard]] size_t size() const;
 
-        /**
-         * Returns the hex encoding of the underlying byte vector
-         * @return
-         */
+        /** Returns the buffer contents as a hex string. */
         [[nodiscard]] std::string to_string() const;
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         */
+        /** Writes a single byte. */
         void uint8(const unsigned char &value);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         * @param big_endian
-         */
+        /** Writes a 16-bit unsigned int. Pass big_endian=true to flip the byte order. */
         void uint16(const uint16_t &value, bool big_endian = false);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         * @param big_endian
-         */
+        /** Writes a 32-bit unsigned int. Pass big_endian=true to flip the byte order. */
         void uint32(const uint32_t &value, bool big_endian = false);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         * @param big_endian
-         */
+        /** Writes a 64-bit unsigned int. Pass big_endian=true to flip the byte order. */
         void uint64(const uint64_t &value, bool big_endian = false);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         * @param big_endian
-         */
+        /** Writes a 128-bit unsigned int. Pass big_endian=true to flip the byte order. */
         void uint128(const uint128_t &value, bool big_endian = false);
 
-        /**
-         * Encodes the value into the vector
-         * @param value
-         * @param big_endian
-         */
+        /** Writes a 256-bit unsigned int. Pass big_endian=true to flip the byte order. */
         void uint256(const uint256_t &value, bool big_endian = false);
 
-        /**
-         * Encodes the value into the vector as a varint
-         * @tparam Type
-         * @param value
-         */
+        /** Writes a value using variable-length integer encoding (smaller values = fewer bytes). */
         template<typename Type> void varint(const Type &value)
         {
             const auto bytes = encode_varint(value);
@@ -197,11 +138,7 @@ namespace Serialization
             extend(bytes);
         }
 
-        /**
-         * Encodes the vector of values into the vector as a varint
-         * @tparam Type
-         * @param values
-         */
+        /** Writes a vector of varints, prefixed with a varint count. */
         template<typename Type> void varint(const std::vector<Type> &values)
         {
             varint(values.size());
@@ -212,10 +149,7 @@ namespace Serialization
             }
         }
 
-        /**
-         * Returns a copy of the underlying vector
-         * @return
-         */
+        /** Returns a copy of the underlying byte buffer. */
         [[nodiscard]] std::vector<unsigned char> vector() const;
 
       private:

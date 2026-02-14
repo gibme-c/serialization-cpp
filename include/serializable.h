@@ -29,79 +29,46 @@
 
 #include <deserializer_t.h>
 #include <json_helper.h>
-#include <secure_erase.h>
+#include <serialization_secure_erase.h>
 #include <serializer_t.h>
 #include <string_helper.h>
 #include <vector>
 
 /**
- * Serialization interface for inheritance
+ * Base interface for anything that can be serialized. Inherit from this and implement
+ * all the pure virtual methods to plug your type into the serializer/deserializer system,
+ * JSON conversion, and string output.
  */
 struct Serializable
 {
   public:
-    /**
-     * Deserializes the structure from a deserializer_t
-     *
-     * @param reader
-     */
+    virtual ~Serializable() = default;
+
+    /** Reads this object's fields from a deserializer_t reader (cursor-based). */
     virtual void deserialize(Serialization::deserializer_t &reader) = 0;
 
-    /**
-     * Deserializes the structure from a std::vector<unsigned char>
-     *
-     * @param data
-     */
+    /** Reads this object's fields from a raw byte vector. */
     virtual void deserialize(const std::vector<unsigned char> &data) = 0;
 
-    /**
-     * Loads the value from JSON
-     *
-     * @param j
-     */
+    /** Populates this object from a JSON value. */
     virtual JSON_FROM_FUNC(fromJSON) = 0;
 
-    /**
-     * Loads the value from a JSON value in the specified key of the JSON object
-     *
-     * @param val
-     * @param key
-     */
+    /** Populates this object from a named key inside a JSON object. */
     virtual JSON_FROM_KEY_FUNC(fromJSON) = 0;
 
-    /**
-     * Serializes the structure using the supplied serializer_t
-     *
-     * @param writer
-     */
+    /** Writes this object's fields into a serializer_t writer. */
     virtual void serialize(Serialization::serializer_t &writer) const = 0;
 
-    /**
-     * Serializes the structure to a std::vector<unsigned char>
-     *
-     * @return
-     */
+    /** Returns this object as a byte vector. */
     [[nodiscard]] virtual std::vector<unsigned char> serialize() const = 0;
 
-    /**
-     * Returns the size of the structure
-     *
-     * @return
-     */
+    /** The serialized size in bytes. Use this instead of sizeof(). */
     [[nodiscard]] virtual size_t size() const = 0;
 
-    /**
-     * Serializes the structure to JSON
-     *
-     * @param writer
-     */
+    /** Writes this object as JSON using the provided RapidJSON writer. */
     virtual JSON_TO_FUNC(toJSON) = 0;
 
-    /**
-     * Returns the structure as a string
-     *
-     * @return
-     */
+    /** Human-readable string representation (typically hex). */
     [[nodiscard]] virtual std::string to_string() const = 0;
 };
 
