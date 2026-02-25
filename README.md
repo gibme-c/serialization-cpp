@@ -1,57 +1,192 @@
-# serialization-cpp: A simple C++ serialization library
+# serialization-cpp
 
-The following *features* have been baked into this library:
+[![CI Build Tests](https://github.com/gibme-c/serialization-cpp/actions/workflows/ci.yml/badge.svg)](https://github.com/gibme-c/serialization-cpp/actions/workflows/ci.yml)
 
-* Builds with CMake making it easy to add to other projects
-* GibHub Actions verifies that it builds on Ubuntu, Windows, and MacOS using various compilers
-* Provides a `serializer_t` and `deserializer_t` structure for writing/reading complex data structures 
-  packed into `unsigned char` (byte) vectors
-* Includes [RapidJSON](https://github.com/Tencent/rapidjson) support for serializing/de-serializing to/from JSON
-  * Including helper MACROS for common patterns
-* Includes support for [uint256_t & uint128_t](https://github.com/calccrypto/uint256_t) value serialization
-* Includes an abstract `Serializable` struct that other structures/classes should extend to ensure support with this
-  library
-* Includes an abstract `SerializablePod<#>` that creates a structured wrapper around a C++ POD
-  * Templated constructor for various underlying byte size(s)
-  * For more complex data structures, most methods should be overridden (or build your own)
-* Includes a `serialization_secure_erase()` method that sets the underlying data storage to 0s without being optimized
-  away by the compiler
-* Includes various string helper methods such as:
-  * `from_hex()` converts a hex encoded string to a vector of unsigned char (bytes)
-  * `to_hex()` converts a data structure to a hex encoded string
-  * `str_join()` joins a vector of strings together using the supplied delimiter
-  * `str_pad()` pads a string with blank spaces up to the specified length
-  * `str_split()` splits a string into a vector of strings using the specified delimiter
-  * `str_trim()` trims any whitespace from both the start and end of the given string
+A C++17 static library for binary serialization and JSON support. Provides a writer/reader pair (`serializer_t`/`deserializer_t`) for packing typed values into byte vectors, an abstract `Serializable` interface for custom types, and RapidJSON-based JSON helpers with convenience macros.
 
-## Documentation
+## Features
 
-C++ API documentation can be found in the headers (.h)
+- **Binary serialization** — `serializer_t` writes and `deserializer_t` reads typed values (integers, booleans, byte arrays, hex strings, varints) to/from `std::vector<unsigned char>` buffers, with optional big-endian support
+- **Variable-length integers** — `encode_varint`/`decode_varint` for compact encoding of small values
+- **128/256-bit integers** — native support for `uint128_t` and `uint256_t` via the [uint256_t](https://github.com/calccrypto/uint256_t) library
+- **JSON support** — RapidJSON wrapper with typed getters and macros (`LOAD_KEY_FROM_JSON`, `KEY_TO_JSON`, `JSON_OBJECT_CONSTRUCTOR`, etc.) for declarative field-to-JSON mapping
+- **Abstract types** — `Serializable` interface, `SerializablePod<N>` fixed-size byte wrapper with hex conversion and secure erasure, `SerializableVector<T>` for vectors of serializable types
+- **Secure erasure** — `serialization_secure_erase()` zeroes memory using `SecureZeroMemory` (MSVC) or an inline asm barrier (GCC/Clang) to prevent dead-store elimination
+- **String utilities** — `from_hex`, `to_hex`, `str_split`, `str_join`, `str_pad`, `str_trim`
+- **Build hardening** — stack protectors, control flow integrity (CET), ASLR, DEP, format security, and symbol visibility across GCC, Clang, MSVC, and MinGW
 
-### Example Use
+## Building
 
-See `test/test.cpp` for a high level example
-
-### Cloning the Repository
-
-This repository uses submodules, make sure you pull those before doing anything if you are cloning the project.
+Requires CMake 3.10+ and a C++17 compiler. Submodules must be initialized first.
 
 ```bash
 git clone --recursive https://github.com/gibme-c/serialization-cpp
+cd serialization-cpp
+
+# Configure and build
+cmake -S . -B build -DBUILD_TEST=ON
+cmake --build build --config Release -j
+
+# Run tests
+./build/serialization-tests          # Linux / macOS / MinGW
+./build/Release/serialization-tests  # Windows (MSVC)
 ```
 
-### As a dependency
+### CMake Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `BUILD_TEST` | `OFF` | Build the unit test executable (`serialization-tests`) |
+| `ARCH` | `native` | Target CPU architecture for `-march` (`native`, `default`, or a specific arch) |
+| `CMAKE_BUILD_TYPE` | `Release` | `Debug`, `Release`, or `RelWithDebInfo` |
+
+### As a Dependency
 
 ```bash
 git submodule add https://github.com/gibme-c/serialization-cpp external/serialization
 git submodule update --init --recursive
 ```
 
+```cmake
+add_subdirectory(external/serialization)
+target_link_libraries(your_target serialization-static)
+```
+
+All compiler warnings, hardening flags, and optimization settings are scoped `PRIVATE` and will not leak into your build. The only things that propagate are the public include paths and the `RAPIDJSON_HAS_STDSTRING` compile definition (required by the JSON headers).
+
+## Usage
+
+Include the umbrella header for everything:
+
+```cpp
+#include <serialization.h>
+```
+
+Or include individual headers:
+
+```cpp
+#include <serializer_t.h>
+#include <deserializer_t.h>
+#include <json_helper.h>
+```
+
+### Binary Serialization
+
+```cpp
+#include <serializer_t.h>
+#include <deserializer_t.h>
+
+// Write
+Serialization::serializer_t writer;
+writer.uint32(42);
+writer.boolean(true);
+writer.hex("deadbeef");
+writer.varint(uint64_t(300));
+
+// Read
+Serialization::deserializer_t reader(writer.data(), writer.size());
+auto val  = reader.uint32();
+auto flag = reader.boolean();
+auto hex  = reader.hex(4);
+auto vi   = reader.varint<uint64_t>();
+```
+
+### Custom Serializable Types
+
+Extend `Serializable` and implement the required methods:
+
+```cpp
+#include <serialization.h>
+
+struct MyType : Serializable
+{
+    uint32_t id;
+    std::string name;
+
+    std::vector<unsigned char> serialize() const override;
+    void deserialize(const std::vector<unsigned char> &data) override;
+    size_t size() const override;
+    std::string to_string() const override;
+
+    // JSON support
+    JSON_FROM_FUNC(fromJSON);
+    JSON_TO_FUNC(toJSON);
+};
+```
+
+For fixed-size data (hashes, keys, etc.), use `SerializablePod<N>`:
+
+```cpp
+using Hash256 = SerializablePod<32>;  // 32-byte fixed-size wrapper
+```
+
+### JSON Macros
+
+```cpp
+JSON_FROM_FUNC(fromJSON)
+{
+    JSON_PARSE(val, json);
+    LOAD_KEY_FROM_JSON(id);
+    LOAD_KEY_FROM_JSON(name);
+}
+
+JSON_TO_FUNC(toJSON)
+{
+    JSON_INIT();
+    KEY_TO_JSON(id);
+    KEY_TO_JSON(name);
+    JSON_DUMP(writer);
+}
+```
+
+## Architecture
+
+### Core Types
+
+| Type | Header | Purpose |
+|------|--------|---------|
+| `serializer_t` | `serializer_t.h` | Writes typed values into a byte vector |
+| `deserializer_t` | `deserializer_t.h` | Reads typed values from a byte buffer with a cursor |
+| `Serializable` | `serializable.h` | Abstract interface: `serialize`, `deserialize`, `toJSON`, `fromJSON`, `size`, `to_string` |
+| `SerializablePod<N>` | `serializable_pod.h` | Fixed-size byte array wrapper with hex conversion, comparison operators, and secure erasure |
+| `SerializableVector<T>` | `serializable_vector.h` | Vector wrapper for `Serializable` types |
+
+### Serialization Pattern
+
+The `serializer_t`/`deserializer_t` pair follows a symmetric writer/reader pattern: serialize fields in order, then deserialize in the same order. The deserializer maintains a cursor (`offset`) that advances with each read. All read methods accept a `peek` parameter to read without advancing.
+
+### Dependencies
+
+| Library | License | Purpose |
+|---------|---------|---------|
+| [RapidJSON](https://github.com/Tencent/rapidjson) | MIT | JSON parsing and generation (header-only) |
+| [uint256_t](https://github.com/calccrypto/uint256_t) | MIT | 128/256-bit unsigned integer types |
+
+Both are included as git submodules under `external/`.
+
+## Testing
+
+Build with `-DBUILD_TEST=ON` to get the `serialization-tests` executable. The test suite covers:
+
+- **Round-trip tests** — serialize then deserialize for all primitive types (uint8 through uint256, boolean, bytes, hex, varint) in both little-endian and big-endian
+- **Pod tests** — `SerializablePod` serialization, JSON round-trip, comparison operators, hex construction
+- **Vector tests** — `SerializableVector` append, extend, serialization, JSON round-trip
+- **Peek mode** — read without advancing the cursor
+- **String helpers** — hex round-trip, split/join, pad, trim
+- **Secure erasure** — verify memory is zeroed
+
+## CI
+
+GitHub Actions runs on every push, pull request, release, and daily schedule:
+
+| Platform | Compilers |
+|----------|-----------|
+| Linux (x86_64) | GCC 11, GCC 12, Clang 14, Clang 15 |
+| macOS (ARM64) | AppleClang, Homebrew Clang |
+| Windows (x86_64) | MSVC, MinGW GCC |
+
 ## License
 
-This wrapper is provided under the [BSD-3-Clause license](https://en.wikipedia.org/wiki/BSD_licenses) found in LICENSE.
+BSD-3-Clause. See [LICENSE](LICENSE) for the full text.
 
-* RapidJSON itself is licensed under the [MIT License](https://en.wikipedia.org/wiki/MIT_License)
-  * Dependencies of RapidJSON are provided the under following license(s):
-    * The [BSD-3-Clause license](https://en.wikipedia.org/wiki/BSD_licenses)
-* The uint256_t library is licensed under the [MIT License](https://en.wikipedia.org/wiki/MIT_License)
+Dependencies are licensed separately: RapidJSON under MIT, uint256_t under MIT.
