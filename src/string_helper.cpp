@@ -29,7 +29,9 @@
 #include <stdexcept>
 #include <string_helper.h>
 
+#ifdef _MSC_VER
 #pragma warning(disable : 4244)
+#endif
 
 static const char hex_chars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
@@ -92,7 +94,8 @@ namespace Serialization
 
         for (uint64_t i = 0; i < text_size; ++i)
         {
-            result[i] = char_2_unsigned_char(text[i << 1]) << 4 | char_2_unsigned_char(text[(i << 1) + 1]);
+            result[i] = static_cast<unsigned char>(
+                char_2_unsigned_char(text[i << 1]) << 4 | char_2_unsigned_char(text[(i << 1) + 1]));
         }
 
         return result;

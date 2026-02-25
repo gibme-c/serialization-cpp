@@ -234,8 +234,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
 };
 
 /** Lets you use SerializablePod with std::cout and friends. */
-template<unsigned int SIZE>
-inline std::ostream &operator<<(std::ostream &os, const SerializablePod<SIZE> &value)
+template<unsigned int SIZE> inline std::ostream &operator<<(std::ostream &os, const SerializablePod<SIZE> &value)
 {
     os << value.to_string();
 

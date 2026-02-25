@@ -68,10 +68,7 @@ namespace Serialization
 
         std::vector<unsigned char> bytes(size, 0);
 
-        for (size_t i = offset, j = 0; i < offset + size; ++i, ++j)
-        {
-            bytes[j] = packed[i];
-        }
+        std::memcpy(bytes.data(), packed.data() + offset, size);
 
         Type value = 0;
 

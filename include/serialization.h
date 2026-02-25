@@ -29,10 +29,10 @@
 
 #include <deserializer_t.h>
 #include <json_helper.h>
-#include <serialization_secure_erase.h>
 #include <serializable_pod.h>
 #include <serializable_vector.h>
 #include <serialization_helper.h>
+#include <serialization_secure_erase.h>
 #include <serializer_t.h>
 #include <string_helper.h>
 

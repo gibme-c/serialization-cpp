@@ -67,12 +67,15 @@ namespace Serialization
             offset += count;
         }
 
-        return {buffer.begin() + start, buffer.begin() + start + count};
+        const auto s = static_cast<std::ptrdiff_t>(start);
+        const auto c = static_cast<std::ptrdiff_t>(count);
+
+        return {buffer.begin() + s, buffer.begin() + s + c};
     }
 
     void deserializer_t::compact()
     {
-        buffer = std::vector<unsigned char>(buffer.begin() + offset, buffer.end());
+        buffer = std::vector<unsigned char>(buffer.begin() + static_cast<std::ptrdiff_t>(offset), buffer.end());
     }
 
     const unsigned char *deserializer_t::data() const
@@ -208,6 +211,6 @@ namespace Serialization
             return {};
         }
 
-        return {buffer.begin() + offset, buffer.end()};
+        return {buffer.begin() + static_cast<std::ptrdiff_t>(offset), buffer.end()};
     }
 } // namespace Serialization
