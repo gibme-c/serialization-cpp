@@ -123,7 +123,7 @@ namespace Serialization
 
         auto counter = offset;
 
-        auto shift = 0;
+        size_t shift = 0;
 
         Type temp_result = 0;
 

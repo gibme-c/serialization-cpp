@@ -52,34 +52,32 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         serialization_secure_erase(bytes, sizeof(bytes));
     }
 
-    // -- Operators: override these if your subclass has a different internal layout --
-
-    virtual unsigned char *operator*()
+    unsigned char *operator*()
     {
         return bytes;
     }
 
-    virtual unsigned char &operator[](size_t i)
+    unsigned char &operator[](size_t i)
     {
         return bytes[i];
     }
 
-    virtual unsigned char operator[](size_t i) const
+    unsigned char operator[](size_t i) const
     {
         return bytes[i];
     }
 
-    virtual bool operator==(const SerializablePod<SIZE> &other) const
+    bool operator==(const SerializablePod<SIZE> &other) const
     {
         return std::equal(std::begin(bytes), std::end(bytes), std::begin(other.bytes));
     }
 
-    virtual bool operator!=(const SerializablePod<SIZE> &other) const
+    bool operator!=(const SerializablePod<SIZE> &other) const
     {
         return !(*this == other);
     }
 
-    virtual bool operator<(const SerializablePod<SIZE> &other) const
+    bool operator<(const SerializablePod<SIZE> &other) const
     {
         for (size_t i = SIZE; i-- > 0;)
         {
@@ -97,7 +95,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         return false;
     }
 
-    virtual bool operator>(const SerializablePod<SIZE> &other) const
+    bool operator>(const SerializablePod<SIZE> &other) const
     {
         for (size_t i = SIZE; i-- > 0;)
         {
@@ -115,18 +113,18 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
         return false;
     }
 
-    virtual bool operator<=(const SerializablePod<SIZE> &other) const
+    bool operator<=(const SerializablePod<SIZE> &other) const
     {
         return (*this == other) || (*this < other);
     }
 
-    virtual bool operator>=(const SerializablePod<SIZE> &other) const
+    bool operator>=(const SerializablePod<SIZE> &other) const
     {
         return (*this == other) || (*this > other);
     }
 
     /** Direct pointer to the raw byte array. */
-    [[nodiscard]] virtual const unsigned char *data() const
+    [[nodiscard]] const unsigned char *data() const
     {
         return bytes;
     }
@@ -153,7 +151,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
     }
 
     /** True if all bytes are zero (i.e., never been set). */
-    [[nodiscard]] virtual bool empty() const
+    [[nodiscard]] bool empty() const
     {
         return *this == SerializablePod<SIZE>();
     }
