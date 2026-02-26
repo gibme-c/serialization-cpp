@@ -30,11 +30,6 @@ if(BUILD_TEST)
     message(STATUS "Test binary added to targets list")
 endif()
 
-# Architecture flag (non-MSVC only)
-if(NOT MSVC)
-    set(ARCH native CACHE STRING "CPU to build for: -march value or 'default' for none")
-endif()
-
 # --- Detect MinGW environment ---
 # Only use CMake's built-in MINGW (set for GCC with MinGW). Clang on Windows can
 # target either MinGW or MSVC ABI, and the linker varies (GNU ld vs lld-link) —
@@ -99,13 +94,6 @@ target_include_directories(serialization-static SYSTEM PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/rapidjson/include>
 )
-
-# --- Architecture flag (PRIVATE — do not leak -march to consumers) ---
-if(NOT MSVC AND NOT "${ARCH}" STREQUAL "default")
-    target_compile_options(serialization-static PRIVATE
-        $<${_is_gnu_like}:-march=${ARCH}>
-    )
-endif()
 
 # --- Hardening: GCC/Clang ---
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
