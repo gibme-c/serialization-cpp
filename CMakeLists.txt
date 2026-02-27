@@ -85,8 +85,12 @@ endif()
 # PUBLIC because downstream consumers including our JSON headers need it too.
 target_compile_definitions(serialization-static PUBLIC RAPIDJSON_HAS_STDSTRING)
 
-# Our own headers: PUBLIC (non-SYSTEM) so warnings are visible
-target_include_directories(serialization-static PUBLIC
+# For building serialization-static itself — NOT system (you want to see your own warnings)
+target_include_directories(serialization-static PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+# For consumers — SYSTEM so they don't get warnings from our headers
+target_include_directories(serialization-static SYSTEM INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 )
 # External/third-party headers: SYSTEM to suppress warnings we don't control
