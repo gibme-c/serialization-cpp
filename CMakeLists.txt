@@ -30,6 +30,81 @@ if(BUILD_TEST)
     message(STATUS "Test binary added to targets list")
 endif()
 
+option(BUILD_FUZZ "Build portable in-process fuzz harnesses" OFF)
+if(DEFINED ENV{BUILD_FUZZ})
+    set(BUILD_FUZZ $ENV{BUILD_FUZZ})
+endif()
+if(BUILD_FUZZ)
+    message(STATUS "Fuzz harnesses added to targets list")
+endif()
+
+# Sanitizer selection for tests and fuzzers (not the static library).
+# Applied PRIVATE so downstream consumers are unaffected. GCC/Clang only.
+set(SANITIZE "none" CACHE STRING "Sanitizer: none|address|undefined|thread|address+undefined")
+set_property(CACHE SANITIZE PROPERTY STRINGS none address undefined thread address+undefined)
+if(NOT SANITIZE STREQUAL "none")
+    message(STATUS "Sanitizer enabled for test/fuzz targets: ${SANITIZE}")
+endif()
+
+# Helper: apply the selected sanitizer to a single target. No-op on MSVC or
+# when SANITIZE=none. Always PRIVATE — never leaks to downstream.
+function(serialization_apply_sanitizer tgt)
+    if(SANITIZE STREQUAL "none")
+        return()
+    endif()
+    if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+        OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
+        message(STATUS "SANITIZE=${SANITIZE} requested but compiler "
+            "${CMAKE_CXX_COMPILER_ID} does not support it; ignoring for target ${tgt}")
+        return()
+    endif()
+    set(_san_flags "")
+    if(SANITIZE MATCHES "address")
+        list(APPEND _san_flags -fsanitize=address -fno-omit-frame-pointer)
+    endif()
+    if(SANITIZE MATCHES "undefined")
+        list(APPEND _san_flags -fsanitize=undefined -fno-sanitize-recover=undefined)
+    endif()
+    if(SANITIZE STREQUAL "thread")
+        list(APPEND _san_flags -fsanitize=thread)
+    endif()
+    target_compile_options(${tgt} PRIVATE ${_san_flags})
+    target_link_options(${tgt} PRIVATE ${_san_flags})
+    # Windows (clang-cl / Clang targeting MSVC ABI) requires disabling the
+    # MSVC STL's string/vector annotations so every TU agrees on the container
+    # layout. Without this, link fails with /failifmismatch on 'annotate_string'
+    # because ASan adds metadata the uninstrumented STL objects lack.
+    if(WIN32 AND SANITIZE MATCHES "address")
+        target_compile_definitions(${tgt} PRIVATE
+            _DISABLE_STRING_ANNOTATION=1
+            _DISABLE_VECTOR_ANNOTATION=1)
+    endif()
+endfunction()
+
+# Helper: apply the same linker-hardening flags used by serialization-tests to
+# any test-or-fuzz executable. Kept here so the fuzz target loop stays short.
+function(serialization_apply_exe_hardening tgt)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        set_property(TARGET ${tgt} APPEND_STRING PROPERTY LINK_FLAGS
+            " -Wl,-z,relro,-z,now -Wl,-z,noexecstack")
+    endif()
+    if(MINGW)
+        set_property(TARGET ${tgt} APPEND_STRING PROPERTY LINK_FLAGS
+            " -Wl,--nxcompat -Wl,--dynamicbase -Wl,--high-entropy-va")
+    endif()
+    if(MSVC)
+        target_compile_options(${tgt} PRIVATE /guard:cf)
+        set_property(TARGET ${tgt} APPEND_STRING PROPERTY LINK_FLAGS
+            " /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /guard:cf")
+        if(HAS_GUARD_EHCONT_SER)
+            target_compile_options(${tgt} PRIVATE /guard:ehcont)
+            set_property(TARGET ${tgt} APPEND_STRING PROPERTY LINK_FLAGS
+                " /guard:ehcont /CETCOMPAT")
+        endif()
+    endif()
+endfunction()
+
 # --- Detect MinGW environment ---
 # Only use CMake's built-in MINGW (set for GCC with MinGW). Clang on Windows can
 # target either MinGW or MSVC ABI, and the linker varies (GNU ld vs lld-link) —
@@ -51,6 +126,11 @@ set(_is_debug "$<CONFIG:Debug>")
 set(_is_release "$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>")
 
 # Dependencies
+# The uint256_t subproject defaults its own BUILD_TESTS option to ON, which would
+# unconditionally build upstream's uint256-tests executable even when we only want
+# our own test binary. Force it off before pulling the subdirectory in — their
+# tests are not part of serialization-cpp's build surface.
+set(BUILD_TESTS OFF CACHE BOOL "Disable uint256_t upstream tests" FORCE)
 add_subdirectory(external/uint256_t)
 set_property(TARGET uint256t PROPERTY FOLDER "external/uint256")
 
@@ -169,6 +249,10 @@ elseif(MSVC)
     endif()
 endif()
 
+# Apply sanitizer (if any) PRIVATELY to the static library so link-time ABI
+# matches the sanitized test/fuzz executables. No effect when SANITIZE=none.
+serialization_apply_sanitizer(serialization-static)
+
 # Tests
 if(BUILD_TEST)
     enable_testing()
@@ -183,28 +267,67 @@ if(BUILD_TEST)
         OUTPUT_NAME "serialization-tests"
     )
 
-    # --- Linker hardening (test executable) ---
-    # Linux (ELF)
-    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        set_property(TARGET serialization-tests APPEND_STRING PROPERTY LINK_FLAGS
-            " -Wl,-z,relro,-z,now -Wl,-z,noexecstack")
-    endif()
-    # MinGW linker hardening (DEP + ASLR) — only for GCC+MinGW (known GNU ld)
-    if(MINGW)
-        set_property(TARGET serialization-tests APPEND_STRING PROPERTY LINK_FLAGS
-            " -Wl,--nxcompat -Wl,--dynamicbase -Wl,--high-entropy-va")
-    endif()
-    # MSVC hardening (test executable)
-    if(MSVC)
-        target_compile_options(serialization-tests PRIVATE /guard:cf)
-        set_property(TARGET serialization-tests APPEND_STRING PROPERTY LINK_FLAGS
-            " /DYNAMICBASE /NXCOMPAT /HIGHENTROPYVA /guard:cf")
-        if(HAS_GUARD_EHCONT_SER)
-            target_compile_options(serialization-tests PRIVATE /guard:ehcont)
-            set_property(TARGET serialization-tests APPEND_STRING PROPERTY LINK_FLAGS
-                " /guard:ehcont /CETCOMPAT")
-        endif()
-    endif()
+    serialization_apply_exe_hardening(serialization-tests)
+    serialization_apply_sanitizer(serialization-tests)
 
     add_test(NAME serialization-tests COMMAND serialization-tests)
+    set_tests_properties(serialization-tests PROPERTIES TIMEOUT 300)
+endif()
+
+# Fuzz harnesses
+if(BUILD_FUZZ)
+    enable_testing()
+
+    set(_fuzz_sources
+        fuzz/fuzz_varint.cpp
+        fuzz/fuzz_hex.cpp
+        fuzz/fuzz_pack_unpack.cpp
+        fuzz/fuzz_deserializer.cpp
+        fuzz/fuzz_deserializer_hexctor.cpp
+        fuzz/fuzz_pod.cpp
+        fuzz/fuzz_svec.cpp
+        fuzz/fuzz_json.cpp
+        fuzz/fuzz_string_helper.cpp
+        fuzz/fuzz_roundtrip.cpp
+    )
+
+    foreach(_fuzz_src IN LISTS _fuzz_sources)
+        get_filename_component(_fuzz_name ${_fuzz_src} NAME_WE)
+        add_executable(${_fuzz_name} ${_fuzz_src})
+        target_link_libraries(${_fuzz_name} PRIVATE serialization-static)
+        target_include_directories(${_fuzz_name} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/include
+            ${CMAKE_CURRENT_SOURCE_DIR}/fuzz
+        )
+        set_target_properties(${_fuzz_name} PROPERTIES
+            CXX_STANDARD 17
+            CXX_STANDARD_REQUIRED ON
+            CXX_EXTENSIONS OFF
+        )
+
+        # Fuzz harnesses use the same warning policy as the library but the
+        # random test scaffolding relies on some conversions the library code
+        # avoids. Keep -Wall/-Wextra but relax -Wconversion/-Wsign-conversion
+        # here so the fuzz drivers don't trip their own guard rails.
+        if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+            target_compile_options(${_fuzz_name} PRIVATE
+                -Wall -Wextra -Wpedantic
+            )
+        elseif(MSVC)
+            target_compile_options(${_fuzz_name} PRIVATE
+                /W3 /wd4267 /wd4244 /wd4804 /wd4996
+            )
+        endif()
+
+        serialization_apply_exe_hardening(${_fuzz_name})
+        serialization_apply_sanitizer(${_fuzz_name})
+
+        # Register as a CTest case. 5k iterations is a smoke run -- the long
+        # fuzz campaign is invoked manually with SERIALIZE_FUZZ_ITERS=1000000.
+        add_test(NAME ${_fuzz_name} COMMAND ${_fuzz_name})
+        set_tests_properties(${_fuzz_name} PROPERTIES
+            ENVIRONMENT "SERIALIZE_FUZZ_ITERS=5000;SERIALIZE_FUZZ_SEED=0xC0FFEE"
+            TIMEOUT 180
+        )
+    endforeach()
 endif()

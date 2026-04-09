@@ -76,6 +76,8 @@ namespace Serialization
     void deserializer_t::compact()
     {
         buffer = std::vector<unsigned char>(buffer.begin() + static_cast<std::ptrdiff_t>(offset), buffer.end());
+        // compact invalidates the old cursor position; restart at 0.
+        offset = 0;
     }
 
     const unsigned char *deserializer_t::data() const

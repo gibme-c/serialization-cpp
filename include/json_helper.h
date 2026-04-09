@@ -50,6 +50,12 @@
         throw std::invalid_argument("JSON value is of the wrong type: " + JSON_TYPE_NAME); \
     }
 
+#define JSON_ARRAY_OR_THROW()                                                              \
+    if (!j.IsArray())                                                                      \
+    {                                                                                      \
+        throw std::invalid_argument("JSON value is of the wrong type: " + JSON_TYPE_NAME); \
+    }
+
 #define JSON_MEMBER_OR_THROW(value)                                                    \
     if (!has_member(j, std::string(value)))                                            \
     {                                                                                  \
@@ -71,6 +77,21 @@
     {                                                     \
         const auto &j = get_json_value(val, key);         \
         JSON_OBJECT_OR_THROW()                            \
+        funccall(j);                                      \
+    }
+
+/** Same as JSON_OBJECT_CONSTRUCTOR but expects a JSON array value instead. */
+#define JSON_ARRAY_CONSTRUCTOR(objtype, funccall)         \
+    explicit objtype(const JSONValue &j)                  \
+    {                                                     \
+        JSON_ARRAY_OR_THROW()                             \
+        funccall(j);                                      \
+    }                                                     \
+                                                          \
+    objtype(const JSONValue &val, const std::string &key) \
+    {                                                     \
+        const auto &j = get_json_value(val, key);         \
+        JSON_ARRAY_OR_THROW()                             \
         funccall(j);                                      \
     }
 
@@ -449,7 +470,7 @@ template<typename T> JSONObject get_json_object(const T &j)
         throw std::invalid_argument("JSON parameter is wrong type. Expected Object, got " + kTypeNames[j.GetType()]);
     }
 
-    return j.Get_Object();
+    return j.GetObject();
 }
 
 /** Gets a JSON object from a named key in a JSON object. */

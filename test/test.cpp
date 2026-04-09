@@ -48,6 +48,19 @@ struct vec_value_t : SerializablePod<32>
 
 static const std::string test_hex = "974506601a60dc465e6e9acddb563889e63471849ec4198656550354b8541fcb";
 
+// Expanded unit test modules. Each file is a header-only fragment of static
+// test functions in its own topic area. Included after the shared helpers so
+// they can use value_t / vec_value_t / test_hex if needed.
+#include "unit_pack_unpack.inl"
+#include "unit_varint.inl"
+#include "unit_string_helper.inl"
+#include "unit_serializer.inl"
+#include "unit_deserializer.inl"
+#include "unit_serializable_pod.inl"
+#include "unit_serializable_vector.inl"
+#include "unit_json_helper.inl"
+#include "unit_secure_erase.inl"
+
 // ============================================================================
 // serializer_t + deserializer_t round-trips
 // ============================================================================
@@ -461,7 +474,11 @@ void test_deserializer_compact()
 
     reader.compact();
 
+    // After compact(), the buffer contains only the previously-unread bytes
+    // and the cursor is reset to 0, so the next read returns the first
+    // remaining byte (0x02).
     ASSERT_EQ(reader.size(), static_cast<size_t>(2));
+    ASSERT_EQ(reader.uint8(), static_cast<unsigned char>(0x02));
     ASSERT_EQ(reader.uint8(), static_cast<unsigned char>(0x03));
 }
 
@@ -1015,6 +1032,351 @@ int main()
 
     std::cout << std::endl << "secure_erase:" << std::endl;
     RUN_TEST(test_secure_erase);
+
+    // ========================================================================
+    // Expanded coverage from unit_*.inl modules
+    // ========================================================================
+
+    SECTION("pack/unpack");
+    RUN_TEST(test_pack_size_uint8);
+    RUN_TEST(test_pack_size_uint16);
+    RUN_TEST(test_pack_size_uint32);
+    RUN_TEST(test_pack_size_uint64);
+    RUN_TEST(test_pack_size_int8);
+    RUN_TEST(test_pack_size_int16);
+    RUN_TEST(test_pack_size_int32);
+    RUN_TEST(test_pack_size_int64);
+    RUN_TEST(test_pack_unpack_roundtrip_uint8_all);
+    RUN_TEST(test_pack_unpack_roundtrip_uint16_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_uint32_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_uint64_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_int8_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_int16_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_int32_grid);
+    RUN_TEST(test_pack_unpack_roundtrip_int64_grid);
+    RUN_TEST(test_pack_unpack_uint16_be_roundtrip);
+    RUN_TEST(test_pack_unpack_uint32_be_roundtrip);
+    RUN_TEST(test_pack_unpack_uint64_be_roundtrip);
+    RUN_TEST(test_pack_uint16_le_layout);
+    RUN_TEST(test_pack_uint32_le_layout);
+    RUN_TEST(test_pack_uint64_le_layout);
+    RUN_TEST(test_unpack_uint32_at_offset);
+    RUN_TEST(test_unpack_uint64_at_offset_be);
+    RUN_TEST(test_unpack_empty_buffer_throws);
+    RUN_TEST(test_unpack_too_small_buffer_throws);
+    RUN_TEST(test_unpack_offset_exact_end_throws);
+    RUN_TEST(test_unpack_offset_just_fits);
+    RUN_TEST(test_unpack_offset_huge_throws);
+    RUN_TEST(test_unpack_zero_offset_empty_type_should_fit);
+    RUN_TEST(test_pack_unpack_mass_roundtrip_uint64);
+    RUN_TEST(test_pack_unpack_mass_roundtrip_int32);
+    RUN_TEST(test_pack_endianness_symmetry_uint32);
+    RUN_TEST(test_pack_unpack_uint16_max_le_be);
+    RUN_TEST(test_pack_unpack_uint32_max_le_be);
+    RUN_TEST(test_pack_unpack_uint64_max_le_be);
+    RUN_TEST(test_pack_int32_negative_bytes_match_cast);
+    RUN_TEST(test_pack_int64_min_roundtrip);
+    RUN_TEST(test_pack_unsigned_char_roundtrip);
+
+    SECTION("varint");
+    RUN_TEST(test_encode_varint_zero_uint8);
+    RUN_TEST(test_encode_varint_0x7f_uint8);
+    RUN_TEST(test_encode_varint_0x80_uint8);
+    RUN_TEST(test_encode_varint_0xff_uint8);
+    RUN_TEST(test_encode_varint_0x3fff_uint16);
+    RUN_TEST(test_encode_varint_0x4000_uint16);
+    RUN_TEST(test_encode_varint_0xffff_uint16);
+    RUN_TEST(test_varint_roundtrip_uint8_exhaustive);
+    RUN_TEST(test_varint_roundtrip_uint16_exhaustive);
+    RUN_TEST(test_varint_roundtrip_uint32_grid);
+    RUN_TEST(test_varint_roundtrip_uint64_grid);
+    RUN_TEST(test_decode_varint_empty_buffer_throws);
+    RUN_TEST(test_decode_varint_truncated_continuation_throws);
+    RUN_TEST(test_decode_varint_offset_past_end_throws);
+    RUN_TEST(test_decode_varint_offset_equals_size_throws);
+    RUN_TEST(test_decode_varint_shift_overflow_uint8);
+    RUN_TEST(test_decode_varint_shift_overflow_uint16);
+    RUN_TEST(test_decode_varint_shift_overflow_uint32);
+    RUN_TEST(test_decode_varint_shift_overflow_uint64);
+    RUN_TEST(test_decode_varint_consumed_at_offset);
+    RUN_TEST(test_decode_varint_stops_at_terminator);
+    RUN_TEST(test_decode_varint_single_byte_all_widths);
+    RUN_TEST(test_decode_varint_two_byte_128);
+    RUN_TEST(test_varint_stream_multiple_values);
+    RUN_TEST(test_decode_varint_corrupt_top_bit_rejects_when_overflow);
+    RUN_TEST(test_decode_varint_uint8_multi_byte_rejected);
+    RUN_TEST(test_decode_varint_uint8_overflow_two_byte);
+    RUN_TEST(test_decode_varint_uint8_overflow_top_bit_of_second);
+    RUN_TEST(test_decode_varint_uint16_overflow_three_byte);
+    RUN_TEST(test_decode_varint_uint32_overflow_five_byte);
+    RUN_TEST(test_decode_varint_uint8_max_decodes_ok);
+    RUN_TEST(test_decode_varint_uint16_max_decodes_ok);
+    RUN_TEST(test_decode_varint_uint32_max_decodes_ok);
+    RUN_TEST(test_decode_varint_uint64_max_decodes_ok);
+    RUN_TEST(test_decode_varint_uint64_final_byte_bit1_rejected);
+    RUN_TEST(test_decode_varint_uint64_final_byte_high_bits_rejected);
+    RUN_TEST(test_varint_mass_roundtrip_uint32);
+    RUN_TEST(test_varint_mass_roundtrip_uint64);
+    RUN_TEST(test_encode_varint_length_monotonic_uint32);
+    RUN_TEST(test_decode_varint_consumed_equals_buffer_size_tight);
+
+    SECTION("string_helper");
+    RUN_TEST(test_from_hex_valid_lowercase);
+    RUN_TEST(test_from_hex_valid_uppercase);
+    RUN_TEST(test_from_hex_mixed_case);
+    RUN_TEST(test_from_hex_all_digits);
+    RUN_TEST(test_from_hex_empty_string_returns_empty);
+    RUN_TEST(test_from_hex_odd_length_throws_length_error);
+    RUN_TEST(test_from_hex_odd_length_single_char_throws);
+    RUN_TEST(test_from_hex_invalid_char_throws_invalid_argument);
+    RUN_TEST(test_from_hex_invalid_char_mid_string_throws);
+    RUN_TEST(test_from_hex_space_char_throws);
+    RUN_TEST(test_from_hex_null_byte_throws);
+    RUN_TEST(test_from_hex_high_ascii_throws);
+    RUN_TEST(test_from_hex_idempotent_via_to_hex);
+    RUN_TEST(test_to_hex_empty);
+    RUN_TEST(test_to_hex_single_byte);
+    RUN_TEST(test_to_hex_produces_lowercase);
+    RUN_TEST(test_to_hex_length_is_twice_input);
+    RUN_TEST(test_str_split_basic);
+    RUN_TEST(test_str_split_single_token_no_delim);
+    RUN_TEST(test_str_split_trailing_delim);
+    RUN_TEST(test_str_split_leading_delim);
+    RUN_TEST(test_str_split_consecutive_delims);
+    RUN_TEST(test_str_join_basic);
+    RUN_TEST(test_str_join_empty_vector);
+    RUN_TEST(test_str_join_single_element);
+    RUN_TEST(test_str_join_empty_strings_keep_delims);
+    RUN_TEST(test_str_join_default_delim_space);
+    RUN_TEST(test_str_split_join_roundtrip_no_empty_parts);
+    RUN_TEST(test_str_pad_shorter_input);
+    RUN_TEST(test_str_pad_equal_length);
+    RUN_TEST(test_str_pad_longer_input);
+    RUN_TEST(test_str_pad_zero_length);
+    RUN_TEST(test_str_pad_empty_input);
+    RUN_TEST(test_str_trim_basic);
+    RUN_TEST(test_str_trim_only_tabs_and_newlines);
+    RUN_TEST(test_str_trim_formfeed_vtab);
+    RUN_TEST(test_str_trim_all_whitespace);
+    RUN_TEST(test_str_trim_empty);
+    RUN_TEST(test_str_trim_no_whitespace);
+    RUN_TEST(test_str_trim_lowercase_path);
+    RUN_TEST(test_str_trim_lowercase_only_letters_changed);
+    RUN_TEST(test_str_trim_preserves_internal_tabs_no);
+
+    SECTION("serializer_t (expanded)");
+    RUN_TEST(test_ser_default_empty);
+    RUN_TEST(test_ser_boolean_true_is_0x01);
+    RUN_TEST(test_ser_boolean_false_is_0x00);
+    RUN_TEST(test_ser_uint8_byte_count);
+    RUN_TEST(test_ser_uint16_byte_count_is_2);
+    RUN_TEST(test_ser_uint32_byte_count_is_4);
+    RUN_TEST(test_ser_uint64_byte_count_is_8);
+    RUN_TEST(test_ser_uint128_byte_count_is_16);
+    RUN_TEST(test_ser_uint256_byte_count_is_32);
+    RUN_TEST(test_ser_bytes_ptr_len);
+    RUN_TEST(test_ser_bytes_nullptr_zero_length_ok);
+    RUN_TEST(test_ser_bytes_nullptr_nonzero_throws);
+    RUN_TEST(test_ser_bytes_vector_overload);
+    RUN_TEST(test_ser_bytes_vector_empty_is_noop);
+    RUN_TEST(test_ser_hex_appends_bytes);
+    RUN_TEST(test_ser_hex_empty_is_noop);
+    RUN_TEST(test_ser_hex_odd_length_throws);
+    RUN_TEST(test_ser_hex_invalid_char_throws);
+    RUN_TEST(test_ser_to_string_matches_hex);
+    RUN_TEST(test_ser_operator_index_read);
+    RUN_TEST(test_ser_operator_index_write_mutation);
+    RUN_TEST(test_ser_reset_clears);
+    RUN_TEST(test_ser_copy_ctor);
+    RUN_TEST(test_ser_initializer_list_ctor);
+    RUN_TEST(test_ser_vector_ctor);
+    RUN_TEST(test_ser_data_pointer_content);
+    RUN_TEST(test_ser_varint_scalar);
+    RUN_TEST(test_ser_varint_vector_prefix_count_then_values);
+    RUN_TEST(test_ser_mixed_write_chain);
+    RUN_TEST(test_ser_final_data_reflects_last_bytes);
+    RUN_TEST(test_ser_vector_returns_copy);
+
+    SECTION("deserializer_t (expanded)");
+    RUN_TEST(test_des_ctor_from_serializer);
+    RUN_TEST(test_des_ctor_from_vector);
+    RUN_TEST(test_des_ctor_from_initializer_list);
+    RUN_TEST(test_des_ctor_from_hex_string);
+    RUN_TEST(test_des_ctor_from_empty_hex_string);
+    RUN_TEST(test_des_ctor_from_odd_hex_throws);
+    RUN_TEST(test_des_ctor_from_invalid_hex_throws);
+    RUN_TEST(test_des_boolean_reads_both_states);
+    RUN_TEST(test_des_uint8_reads_each_byte);
+    RUN_TEST(test_des_uint16_le_and_be);
+    RUN_TEST(test_des_uint32_le_and_be);
+    RUN_TEST(test_des_uint64_le_and_be);
+    RUN_TEST(test_des_peek_does_not_advance);
+    RUN_TEST(test_des_peek_bytes_does_not_advance);
+    RUN_TEST(test_des_bytes_zero_count);
+    RUN_TEST(test_des_bytes_exact_full_buffer);
+    RUN_TEST(test_des_hex_read);
+    RUN_TEST(test_des_hex_peek);
+    RUN_TEST(test_des_uint8_past_end_throws);
+    RUN_TEST(test_des_uint16_half_past_end_throws);
+    RUN_TEST(test_des_uint32_partial_throws);
+    RUN_TEST(test_des_uint64_partial_throws);
+    RUN_TEST(test_des_uint128_partial_throws);
+    RUN_TEST(test_des_uint256_partial_throws);
+    RUN_TEST(test_des_bytes_count_past_end_throws);
+    RUN_TEST(test_des_hex_count_past_end_throws);
+    RUN_TEST(test_des_read_after_full_consumed_throws);
+    RUN_TEST(test_des_skip_ok);
+    RUN_TEST(test_des_skip_past_end_throws);
+    RUN_TEST(test_des_skip_exact_end_ok);
+    RUN_TEST(test_des_skip_zero_ok);
+    RUN_TEST(test_des_reset_returns_to_start);
+    RUN_TEST(test_des_reset_to_mid_position);
+    RUN_TEST(test_des_compact_drops_consumed_bytes);
+    RUN_TEST(test_des_compact_from_start_is_noop);
+    RUN_TEST(test_des_compact_after_full_read);
+    RUN_TEST(test_des_unread_bytes_decreases_with_reads);
+    RUN_TEST(test_des_unread_data_copy);
+    RUN_TEST(test_des_unread_data_empty_when_consumed);
+    RUN_TEST(test_des_varint_reads_and_advances);
+    RUN_TEST(test_des_varint_peek);
+    RUN_TEST(test_des_varint_truncated_throws);
+    RUN_TEST(test_des_podV_inflated_count_throws_before_oom);
+    RUN_TEST(test_des_podV_count_zero_empty_result);
+    RUN_TEST(test_des_podV_small_roundtrip);
+    RUN_TEST(test_des_podVV_inflated_outer_count_throws);
+    RUN_TEST(test_des_podVV_inflated_inner_count_throws);
+    RUN_TEST(test_des_podVV_empty_outer_returns_empty);
+    RUN_TEST(test_des_varintV_count_zero_empty);
+    RUN_TEST(test_des_varintV_small_roundtrip);
+    RUN_TEST(test_des_varintV_inflated_count_throws);
+    RUN_TEST(test_des_data_and_size);
+    RUN_TEST(test_des_to_string);
+    RUN_TEST(test_des_uint16_be_roundtrip_via_serializer);
+    RUN_TEST(test_des_uint32_be_roundtrip_via_serializer);
+    RUN_TEST(test_des_uint64_be_roundtrip_via_serializer);
+    RUN_TEST(test_des_uint128_roundtrip);
+    RUN_TEST(test_des_uint256_roundtrip);
+    RUN_TEST(test_des_reset_to_end_read_throws);
+    RUN_TEST(test_des_empty_buffer_reads_all_throw);
+    RUN_TEST(test_des_pod_single_peek);
+
+    SECTION("SerializablePod (expanded)");
+    RUN_TEST(test_pod_default_is_empty_sz8);
+    RUN_TEST(test_pod_default_is_empty_sz32);
+    RUN_TEST(test_pod_default_is_empty_sz128);
+    RUN_TEST(test_pod_size_is_template_param);
+    RUN_TEST(test_pod_hex_ctor_8);
+    RUN_TEST(test_pod_hex_ctor_32);
+    RUN_TEST(test_pod_hex_ctor_wrong_size_throws);
+    RUN_TEST(test_pod_hex_ctor_too_long_throws);
+    RUN_TEST(test_pod_hex_ctor_odd_length_throws);
+    RUN_TEST(test_pod_hex_ctor_invalid_char_throws);
+    RUN_TEST(test_pod_serialize_bytes_round_trip);
+    RUN_TEST(test_pod_deserialize_wrong_size_throws);
+    RUN_TEST(test_pod_deserialize_empty_throws);
+    RUN_TEST(test_pod_deserialize_too_long_throws);
+    RUN_TEST(test_pod_serialize_via_reader_sized);
+    RUN_TEST(test_pod_deserialize_via_reader_short_buffer_throws);
+    RUN_TEST(test_pod_equality_and_inequality);
+    RUN_TEST(test_pod_lt_gt_le_ge);
+    RUN_TEST(test_pod_operators_equal_is_le_and_ge);
+    RUN_TEST(test_pod_operator_index_read_write);
+    RUN_TEST(test_pod_operator_dereference_returns_ptr);
+    RUN_TEST(test_pod_data_ptr_matches_indexing);
+    RUN_TEST(test_pod_to_string_matches_hex_encoding);
+    RUN_TEST(test_pod_fromJSON_string_round_trip);
+    RUN_TEST(test_pod_fromJSON_non_string_throws);
+    RUN_TEST(test_pod_fromJSON_wrong_size_string_throws);
+    RUN_TEST(test_pod_fromJSON_invalid_hex_throws);
+    RUN_TEST(test_pod_fromJSON_by_key);
+    RUN_TEST(test_pod_fromJSON_missing_key_throws);
+    RUN_TEST(test_pod_ostream_is_hex);
+    RUN_TEST(test_pod_full_pipeline_roundtrip_P64);
+    RUN_TEST(test_pod_full_pipeline_roundtrip_P128);
+    RUN_TEST(test_pod_empty_flips_on_mutation);
+    RUN_TEST(test_pod_distinct_sizes_instantiate_independently);
+
+    SECTION("SerializableVector (expanded)");
+    RUN_TEST(test_svec_default_empty);
+    RUN_TEST(test_svec_append_and_back);
+    RUN_TEST(test_svec_extend_vector_expanded);
+    RUN_TEST(test_svec_extend_svec_expanded);
+    RUN_TEST(test_svec_equality_same_length);
+    RUN_TEST(test_svec_equality_differs_at_index);
+    RUN_TEST(test_svec_equality_length_mismatch_not_equal);
+    RUN_TEST(test_svec_operator_index);
+    RUN_TEST(test_svec_serialize_roundtrip);
+    RUN_TEST(test_svec_serialize_empty);
+    RUN_TEST(test_svec_deserialize_via_reader);
+    RUN_TEST(test_svec_ctor_from_hex_string_roundtrip);
+    RUN_TEST(test_svec_ctor_from_empty_hex_string);
+    RUN_TEST(test_svec_ctor_from_invalid_hex_throws);
+    RUN_TEST(test_svec_ctor_from_json_array_value);
+    RUN_TEST(test_svec_ctor_from_json_object_value_throws);
+    RUN_TEST(test_svec_ctor_from_json_by_key_array);
+    RUN_TEST(test_svec_deserialize_inflated_count_throws);
+    RUN_TEST(test_svec_deserialize_count_one_empty_payload_throws);
+    RUN_TEST(test_svec_deserialize_count_two_one_payload_throws);
+    RUN_TEST(test_svec_toJSON_fromJSON_array_roundtrip);
+    RUN_TEST(test_svec_fromJSON_non_array_throws);
+    RUN_TEST(test_svec_fromJSON_empty_array);
+    RUN_TEST(test_svec_fromJSON_by_key);
+    RUN_TEST(test_svec_fromJSON_missing_key_throws);
+    RUN_TEST(test_svec_distinct_instances_equal_when_content_matches);
+    RUN_TEST(test_svec_to_string_roundtrip_matches);
+    RUN_TEST(test_svec_many_elements_roundtrip);
+
+    SECTION("json_helper");
+    RUN_TEST(test_json_has_member_true);
+    RUN_TEST(test_json_has_member_false);
+    RUN_TEST(test_json_get_value_present);
+    RUN_TEST(test_json_get_value_missing_throws);
+    RUN_TEST(test_json_get_bool_true);
+    RUN_TEST(test_json_get_bool_false);
+    RUN_TEST(test_json_get_bool_type_mismatch_throws);
+    RUN_TEST(test_json_get_bool_missing_key_throws);
+    RUN_TEST(test_json_get_int64);
+    RUN_TEST(test_json_get_int64_type_mismatch_throws);
+    RUN_TEST(test_json_get_uint64);
+    RUN_TEST(test_json_get_uint64_type_mismatch_throws);
+    RUN_TEST(test_json_get_uint32);
+    RUN_TEST(test_json_get_uint32_type_mismatch_throws);
+    RUN_TEST(test_json_get_double);
+    RUN_TEST(test_json_get_double_type_mismatch_throws);
+    RUN_TEST(test_json_get_string);
+    RUN_TEST(test_json_get_string_type_mismatch_throws);
+    RUN_TEST(test_json_get_string_empty);
+    RUN_TEST(test_json_get_array_ok);
+    RUN_TEST(test_json_get_array_type_mismatch_throws);
+    RUN_TEST(test_json_get_array_empty);
+    RUN_TEST(test_json_get_object_ok);
+    RUN_TEST(test_json_get_object_root);
+    RUN_TEST(test_json_get_object_type_mismatch_throws);
+    RUN_TEST(test_json_get_object_missing_key_throws);
+    RUN_TEST(test_json_parse_macro_malformed_throws);
+    RUN_TEST(test_json_parse_macro_ok);
+    RUN_TEST(test_json_parse_empty_string_throws);
+    RUN_TEST(test_json_str_to_json_ok);
+    RUN_TEST(test_json_str_to_json_malformed_throws);
+    RUN_TEST(test_json_load_string_macro);
+    RUN_TEST(test_json_load_bool_macro);
+    RUN_TEST(test_json_load_u32_macro);
+    RUN_TEST(test_json_load_u64_macro);
+    RUN_TEST(test_json_load_string_missing_key_throws);
+    RUN_TEST(test_json_if_member_present);
+    RUN_TEST(test_json_if_member_absent);
+    RUN_TEST(test_json_init_dump_roundtrip);
+    RUN_TEST(test_json_load_keyv_macro);
+    RUN_TEST(test_json_load_keyvv_macro);
+    RUN_TEST(test_json_member_or_throw_hits_when_missing);
+
+    SECTION("secure_erase (expanded)");
+    RUN_TEST(test_secure_erase_one_byte);
+    RUN_TEST(test_secure_erase_small_buffer);
+    RUN_TEST(test_secure_erase_medium_buffer);
+    RUN_TEST(test_secure_erase_large_buffer);
+    RUN_TEST(test_secure_erase_zero_length_is_noop);
+    RUN_TEST(test_secure_erase_unaligned_offset);
 
     return test_summary();
 }

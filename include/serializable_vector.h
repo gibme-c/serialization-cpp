@@ -38,7 +38,8 @@ template<typename Type> struct SerializableVector : Serializable
   public:
     SerializableVector() = default;
 
-    JSON_OBJECT_CONSTRUCTOR(SerializableVector, fromJSON);
+    // fromJSON expects a JSON array.
+    JSON_ARRAY_CONSTRUCTOR(SerializableVector, fromJSON);
 
     /** Constructs from a hex string by deserializing the decoded bytes. */
     explicit SerializableVector(const std::string &value)
@@ -58,7 +59,9 @@ template<typename Type> struct SerializableVector : Serializable
 
     bool operator==(const SerializableVector<Type> &other) const
     {
-        return std::equal(container.begin(), container.end(), other.container.begin());
+        // size check first — std::equal's 2-iter form ignores length.
+        return container.size() == other.container.size()
+               && std::equal(container.begin(), container.end(), other.container.begin());
     }
 
     bool operator!=(const SerializableVector<Type> &other) const

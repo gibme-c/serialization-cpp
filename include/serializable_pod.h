@@ -134,7 +134,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
     {
         if (data.size() != sizeof(bytes))
         {
-            throw std::runtime_error("data is of the wrong size for this structure");
+            throw std::length_error("data is of the wrong size for this structure");
         }
 
         std::memcpy(&bytes, data.data(), data.size());
@@ -217,7 +217,7 @@ template<unsigned int SIZE = 32> struct SerializablePod : Serializable
 
         if (input.size() != sizeof(bytes))
         {
-            throw std::runtime_error("Value provided is of invalid size");
+            throw std::length_error("Value provided is of invalid size");
         }
 
         std::copy(input.begin(), input.end(), std::begin(bytes));

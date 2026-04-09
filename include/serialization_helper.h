@@ -59,6 +59,8 @@ namespace Serialization
     template<typename Type>
     Type unpack(const std::vector<unsigned char> &packed, size_t offset = 0, bool big_endian = false)
     {
+        static_assert(sizeof(Type) <= 64, "Type exceeds unpack buffer size");
+
         const auto size = sizeof(Type);
 
         if (size > packed.size() || offset > packed.size() - size)
@@ -66,18 +68,17 @@ namespace Serialization
             throw std::range_error("not enough data to complete request");
         }
 
-        std::vector<unsigned char> bytes(size, 0);
+        unsigned char bytes[64] = {0};
 
-        std::memcpy(bytes.data(), packed.data() + offset, size);
-
-        Type value = 0;
+        std::memcpy(bytes, packed.data() + offset, size);
 
         if (big_endian)
         {
-            std::reverse(bytes.begin(), bytes.end());
+            std::reverse(bytes, bytes + size);
         }
 
-        std::memcpy(&value, bytes.data(), bytes.size());
+        Type value = 0;
+        std::memcpy(&value, bytes, size);
 
         return value;
     }
@@ -85,7 +86,8 @@ namespace Serialization
     /** Encodes a value using variable-length encoding -- smaller values use fewer bytes. */
     template<typename Type> std::vector<unsigned char> encode_varint(const Type &value)
     {
-        const auto max_length = sizeof(Type) + 2;
+        // LEB128: ceil(width/7) bytes max.
+        constexpr size_t max_length = (sizeof(Type) * 8 + 6) / 7;
 
         std::vector<unsigned char> output;
 
@@ -93,21 +95,16 @@ namespace Serialization
 
         while (val >= 0x80)
         {
-            if (output.size() == (max_length - 1))
-            {
-                throw std::range_error("value is out of range for type");
-            }
-
-            const auto val8 = static_cast<unsigned char>(val);
-
-            output.push_back((static_cast<unsigned char>(val8) & 0x7f) | 0x80);
-
+            output.push_back(static_cast<unsigned char>((val & 0x7f) | 0x80));
             val >>= 7;
         }
 
-        const auto val8 = static_cast<unsigned char>(val);
+        output.push_back(static_cast<unsigned char>(val));
 
-        output.push_back(static_cast<unsigned char>(val8));
+        if (output.size() > max_length)
+        {
+            throw std::range_error("varint encoding exceeds max length for type");
+        }
 
         return output;
     }
@@ -125,7 +122,9 @@ namespace Serialization
 
         size_t shift = 0;
 
-        Type temp_result = 0;
+        // Accumulate in uint64_t so the narrowing check below fires when
+        // Type is narrower (e.g. decoding 256 into uint8_t).
+        uint64_t temp_result = 0;
 
         unsigned char b;
 
@@ -143,16 +142,28 @@ namespace Serialization
                 throw std::range_error("varint encoding exceeds type size");
             }
 
-            const auto value = (shift < 28) ? uint64_t(b & 0x7f) << shift : uint64_t(b & 0x7f) * (uint64_t(1) << shift);
+            // On the final byte, the payload bits must fit in what remains
+            // of Type; otherwise bits silently land beyond the value range.
+            const size_t remaining_bits = sizeof(Type) * 8 - shift;
+            if (remaining_bits < 7)
+            {
+                const unsigned char mask = static_cast<unsigned char>((1u << remaining_bits) - 1u);
+                if ((b & 0x7f) > mask)
+                {
+                    throw std::range_error("varint value out of range for type");
+                }
+            }
 
-            temp_result += Type(value);
+            const uint64_t value = uint64_t(b & 0x7f) << shift;
+
+            temp_result += value;
 
             shift += 7;
         } while (b >= 0x80);
 
-        const auto result = Type(temp_result);
+        const auto result = static_cast<Type>(temp_result);
 
-        if (result != temp_result)
+        if (static_cast<uint64_t>(result) != temp_result)
         {
             throw std::range_error("value is out of range for type");
         }

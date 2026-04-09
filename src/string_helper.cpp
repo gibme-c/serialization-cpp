@@ -57,7 +57,7 @@ static inline unsigned char char_2_unsigned_char(char character)
 
     if (value > 0x0f)
     {
-        throw std::runtime_error("invalid hexadecimal character");
+        throw std::invalid_argument("invalid hexadecimal character");
     }
 
     return value;
@@ -85,7 +85,7 @@ namespace Serialization
 
         if ((text.size() & 1) != 0)
         {
-            throw std::runtime_error("from_hex: invalid string size");
+            throw std::length_error("from_hex: invalid string size");
         }
 
         const auto text_size = text.size() >> 1;
