@@ -39,193 +39,196 @@
 static int g_tests_passed = 0;
 static int g_tests_failed = 0;
 
-#define ASSERT_TRUE(expr)                                                                  \
-    do                                                                                     \
-    {                                                                                      \
-        if (!(expr))                                                                       \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_TRUE failed: " #expr);                                         \
-        }                                                                                  \
+#define ASSERT_TRUE(expr)                                                                                 \
+    do                                                                                                    \
+    {                                                                                                     \
+        if (!(expr))                                                                                      \
+        {                                                                                                 \
+            throw std::runtime_error(                                                                     \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__) + ": ASSERT_TRUE failed: " #expr); \
+        }                                                                                                 \
     } while (0)
 
-#define ASSERT_FALSE(expr)                                                                 \
-    do                                                                                     \
-    {                                                                                      \
-        if ((expr))                                                                        \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_FALSE failed: " #expr);                                        \
-        }                                                                                  \
+#define ASSERT_FALSE(expr)                                                                                 \
+    do                                                                                                     \
+    {                                                                                                      \
+        if ((expr))                                                                                        \
+        {                                                                                                  \
+            throw std::runtime_error(                                                                      \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__) + ": ASSERT_FALSE failed: " #expr); \
+        }                                                                                                  \
     } while (0)
 
-#define ASSERT_EQ(a, b)                                                                    \
-    do                                                                                     \
-    {                                                                                      \
-        if (!((a) == (b)))                                                                 \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_EQ failed: " #a " == " #b);                                    \
-        }                                                                                  \
+#define ASSERT_EQ(a, b)                                                                                        \
+    do                                                                                                         \
+    {                                                                                                          \
+        if (!((a) == (b)))                                                                                     \
+        {                                                                                                      \
+            throw std::runtime_error(                                                                          \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__) + ": ASSERT_EQ failed: " #a " == " #b); \
+        }                                                                                                      \
     } while (0)
 
-#define ASSERT_NE(a, b)                                                                    \
-    do                                                                                     \
-    {                                                                                      \
-        if (!((a) != (b)))                                                                 \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_NE failed: " #a " != " #b);                                    \
-        }                                                                                  \
+#define ASSERT_NE(a, b)                                                                                        \
+    do                                                                                                         \
+    {                                                                                                          \
+        if (!((a) != (b)))                                                                                     \
+        {                                                                                                      \
+            throw std::runtime_error(                                                                          \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__) + ": ASSERT_NE failed: " #a " != " #b); \
+        }                                                                                                      \
     } while (0)
 
-#define ASSERT_THROWS(expr)                                                                \
-    do                                                                                     \
-    {                                                                                      \
-        bool caught = false;                                                               \
-        try                                                                                \
-        {                                                                                  \
-            expr;                                                                          \
-        }                                                                                  \
-        catch (...)                                                                        \
-        {                                                                                  \
-            caught = true;                                                                 \
-        }                                                                                  \
-        if (!caught)                                                                       \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS failed: " #expr " did not throw");                      \
-        }                                                                                  \
+#define ASSERT_THROWS(expr)                                            \
+    do                                                                 \
+    {                                                                  \
+        bool caught = false;                                           \
+        try                                                            \
+        {                                                              \
+            expr;                                                      \
+        }                                                              \
+        catch (...)                                                    \
+        {                                                              \
+            caught = true;                                             \
+        }                                                              \
+        if (!caught)                                                   \
+        {                                                              \
+            throw std::runtime_error(                                  \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__) \
+                + ": ASSERT_THROWS failed: " #expr " did not throw");  \
+        }                                                              \
     } while (0)
 
 // Assert that `expr` throws an exception of the expected C++ type. Subclasses of
 // the expected type are acceptable.
-#define ASSERT_THROWS_TYPE(expr, ExcType)                                                  \
-    do                                                                                     \
-    {                                                                                      \
-        bool caught = false;                                                               \
-        try                                                                                \
-        {                                                                                  \
-            expr;                                                                          \
-        }                                                                                  \
-        catch (const ExcType &)                                                            \
-        {                                                                                  \
-            caught = true;                                                                 \
-        }                                                                                  \
-        catch (...)                                                                        \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS_TYPE failed: " #expr " threw a different exception");   \
-        }                                                                                  \
-        if (!caught)                                                                       \
-        {                                                                                  \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS_TYPE failed: " #expr " did not throw");                 \
-        }                                                                                  \
+#define ASSERT_THROWS_TYPE(expr, ExcType)                                                \
+    do                                                                                   \
+    {                                                                                    \
+        bool caught = false;                                                             \
+        try                                                                              \
+        {                                                                                \
+            expr;                                                                        \
+        }                                                                                \
+        catch (const ExcType &)                                                          \
+        {                                                                                \
+            caught = true;                                                               \
+        }                                                                                \
+        catch (...)                                                                      \
+        {                                                                                \
+            throw std::runtime_error(                                                    \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__)                   \
+                + ": ASSERT_THROWS_TYPE failed: " #expr " threw a different exception"); \
+        }                                                                                \
+        if (!caught)                                                                     \
+        {                                                                                \
+            throw std::runtime_error(                                                    \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__)                   \
+                + ": ASSERT_THROWS_TYPE failed: " #expr " did not throw");               \
+        }                                                                                \
     } while (0)
 
 // Assert that `expr` throws and that what() contains the given substring (case
 // sensitive). Useful for pinning error messages to the intended branch.
-#define ASSERT_THROWS_MSG(expr, needle)                                                     \
-    do                                                                                      \
-    {                                                                                       \
-        bool caught = false;                                                                \
-        std::string what_str;                                                               \
-        try                                                                                 \
-        {                                                                                   \
-            expr;                                                                           \
-        }                                                                                   \
-        catch (const std::exception &e)                                                     \
-        {                                                                                   \
-            caught = true;                                                                  \
-            what_str = e.what();                                                            \
-        }                                                                                   \
-        catch (...)                                                                         \
-        {                                                                                   \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS_MSG failed: non-std::exception thrown by " #expr);       \
-        }                                                                                   \
-        if (!caught)                                                                        \
-        {                                                                                   \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS_MSG failed: " #expr " did not throw");                   \
-        }                                                                                   \
-        if (what_str.find((needle)) == std::string::npos)                                   \
-        {                                                                                   \
-            throw std::runtime_error(std::string(__FILE__) + ":" + std::to_string(__LINE__) \
-                + ": ASSERT_THROWS_MSG failed: expected what() to contain '"                \
-                + std::string(needle) + "', got '" + what_str + "'");                       \
-        }                                                                                   \
+#define ASSERT_THROWS_MSG(expr, needle)                                                                         \
+    do                                                                                                          \
+    {                                                                                                           \
+        bool caught = false;                                                                                    \
+        std::string what_str;                                                                                   \
+        try                                                                                                     \
+        {                                                                                                       \
+            expr;                                                                                               \
+        }                                                                                                       \
+        catch (const std::exception &e)                                                                         \
+        {                                                                                                       \
+            caught = true;                                                                                      \
+            what_str = e.what();                                                                                \
+        }                                                                                                       \
+        catch (...)                                                                                             \
+        {                                                                                                       \
+            throw std::runtime_error(                                                                           \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__)                                          \
+                + ": ASSERT_THROWS_MSG failed: non-std::exception thrown by " #expr);                           \
+        }                                                                                                       \
+        if (!caught)                                                                                            \
+        {                                                                                                       \
+            throw std::runtime_error(                                                                           \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__)                                          \
+                + ": ASSERT_THROWS_MSG failed: " #expr " did not throw");                                       \
+        }                                                                                                       \
+        if (what_str.find((needle)) == std::string::npos)                                                       \
+        {                                                                                                       \
+            throw std::runtime_error(                                                                           \
+                std::string(__FILE__) + ":" + std::to_string(__LINE__)                                          \
+                + ": ASSERT_THROWS_MSG failed: expected what() to contain '" + std::string(needle) + "', got '" \
+                + what_str + "'");                                                                              \
+        }                                                                                                       \
     } while (0)
 
 // Compare two std::vector<unsigned char> buffers (or anything whose .size() and
 // indexing match). Produces a diagnostic that includes lengths and the first
 // differing byte.
-#define ASSERT_BYTES_EQ(a, b)                                                               \
-    do                                                                                      \
-    {                                                                                       \
-        const auto &_ba = (a);                                                              \
-        const auto &_bb = (b);                                                              \
-        if (_ba.size() != _bb.size())                                                       \
-        {                                                                                   \
-            std::ostringstream _oss;                                                        \
-            _oss << __FILE__ << ":" << __LINE__ << ": ASSERT_BYTES_EQ failed: size mismatch " \
-                 << _ba.size() << " vs " << _bb.size();                                     \
-            throw std::runtime_error(_oss.str());                                           \
-        }                                                                                   \
-        for (size_t _i = 0; _i < _ba.size(); ++_i)                                          \
-        {                                                                                   \
-            if (_ba[_i] != _bb[_i])                                                         \
-            {                                                                               \
-                std::ostringstream _oss;                                                    \
-                _oss << __FILE__ << ":" << __LINE__                                         \
-                     << ": ASSERT_BYTES_EQ failed at byte " << _i << ": 0x" << std::hex     \
-                     << static_cast<unsigned>(_ba[_i]) << " vs 0x"                          \
-                     << static_cast<unsigned>(_bb[_i]);                                     \
-                throw std::runtime_error(_oss.str());                                       \
-            }                                                                               \
-        }                                                                                   \
+#define ASSERT_BYTES_EQ(a, b)                                                                                          \
+    do                                                                                                                 \
+    {                                                                                                                  \
+        const auto &_ba = (a);                                                                                         \
+        const auto &_bb = (b);                                                                                         \
+        if (_ba.size() != _bb.size())                                                                                  \
+        {                                                                                                              \
+            std::ostringstream _oss;                                                                                   \
+            _oss << __FILE__ << ":" << __LINE__ << ": ASSERT_BYTES_EQ failed: size mismatch " << _ba.size() << " vs "  \
+                 << _bb.size();                                                                                        \
+            throw std::runtime_error(_oss.str());                                                                      \
+        }                                                                                                              \
+        for (size_t _i = 0; _i < _ba.size(); ++_i)                                                                     \
+        {                                                                                                              \
+            if (_ba[_i] != _bb[_i])                                                                                    \
+            {                                                                                                          \
+                std::ostringstream _oss;                                                                               \
+                _oss << __FILE__ << ":" << __LINE__ << ": ASSERT_BYTES_EQ failed at byte " << _i << ": 0x" << std::hex \
+                     << static_cast<unsigned>(_ba[_i]) << " vs 0x" << static_cast<unsigned>(_bb[_i]);                  \
+                throw std::runtime_error(_oss.str());                                                                  \
+            }                                                                                                          \
+        }                                                                                                              \
     } while (0)
 
 // Float/double approximate equality.
-#define ASSERT_NEAR(a, b, epsilon)                                                          \
-    do                                                                                      \
-    {                                                                                       \
-        const double _a = static_cast<double>(a);                                           \
-        const double _b = static_cast<double>(b);                                           \
-        const double _e = static_cast<double>(epsilon);                                     \
-        if (std::fabs(_a - _b) > _e)                                                        \
-        {                                                                                   \
-            std::ostringstream _oss;                                                        \
-            _oss << __FILE__ << ":" << __LINE__ << ": ASSERT_NEAR failed: |" << _a          \
-                 << " - " << _b << "| > " << _e;                                            \
-            throw std::runtime_error(_oss.str());                                           \
-        }                                                                                   \
+#define ASSERT_NEAR(a, b, epsilon)                                                                                 \
+    do                                                                                                             \
+    {                                                                                                              \
+        const double _a = static_cast<double>(a);                                                                  \
+        const double _b = static_cast<double>(b);                                                                  \
+        const double _e = static_cast<double>(epsilon);                                                            \
+        if (std::fabs(_a - _b) > _e)                                                                               \
+        {                                                                                                          \
+            std::ostringstream _oss;                                                                               \
+            _oss << __FILE__ << ":" << __LINE__ << ": ASSERT_NEAR failed: |" << _a << " - " << _b << "| > " << _e; \
+            throw std::runtime_error(_oss.str());                                                                  \
+        }                                                                                                          \
     } while (0)
 
 // Prints a section header so test output groups are visually distinct.
-#define SECTION(name)                                                                       \
-    do                                                                                      \
-    {                                                                                       \
-        std::cout << std::endl << (name) << ":" << std::endl;                               \
+#define SECTION(name)                                         \
+    do                                                        \
+    {                                                         \
+        std::cout << std::endl << (name) << ":" << std::endl; \
     } while (0)
 
-#define RUN_TEST(func)                                                      \
-    do                                                                      \
-    {                                                                       \
-        std::cout << "  " #func "... " << std::flush;                       \
-        try                                                                 \
-        {                                                                   \
-            func();                                                         \
-            std::cout << "PASSED" << std::endl;                             \
-            ++g_tests_passed;                                               \
-        }                                                                   \
-        catch (const std::exception &e)                                     \
-        {                                                                   \
-            std::cout << "FAILED" << std::endl;                             \
-            std::cerr << "    " << e.what() << std::endl;                   \
-            ++g_tests_failed;                                               \
-        }                                                                   \
+#define RUN_TEST(func)                                    \
+    do                                                    \
+    {                                                     \
+        std::cout << "  " #func "... " << std::flush;     \
+        try                                               \
+        {                                                 \
+            func();                                       \
+            std::cout << "PASSED" << std::endl;           \
+            ++g_tests_passed;                             \
+        }                                                 \
+        catch (const std::exception &e)                   \
+        {                                                 \
+            std::cout << "FAILED" << std::endl;           \
+            std::cerr << "    " << e.what() << std::endl; \
+            ++g_tests_failed;                             \
+        }                                                 \
     } while (0)
 
 static inline int test_summary()

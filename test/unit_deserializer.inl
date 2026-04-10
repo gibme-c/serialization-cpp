@@ -22,7 +22,7 @@ namespace unit_des
     // SerializablePod<8> — smaller than the default 32 so crafted byte streams
     // can cover multiple items in a compact test.
     using Pod8 = SerializablePod<8>;
-}
+} // namespace unit_des
 
 // ---------- ctors ----------
 static void test_des_ctor_from_serializer()
@@ -56,7 +56,7 @@ static void test_des_ctor_from_hex_string()
     ASSERT_EQ(r.size(), static_cast<size_t>(4));
     // Bytes {DE,AD,BE,EF} in little-endian decode as 0xEFBEADDE; read with
     // big_endian=true to recover the value the hex string appears to show.
-    ASSERT_EQ(r.uint32(true, true), 0xDEADBEEFu);  // peek + BE
+    ASSERT_EQ(r.uint32(true, true), 0xDEADBEEFu); // peek + BE
     const auto h = r.to_string();
     ASSERT_EQ(h, std::string("deadbeef"));
 }
@@ -79,14 +79,23 @@ static void test_des_ctor_from_invalid_hex_throws()
 }
 
 // ---------- primitive reads ----------
-static void test_des_boolean_reads_both_states()
+static void test_des_boolean_valid_values()
 {
-    Serialization::deserializer_t r({0x00, 0x01, 0x02, 0xFF});
+    Serialization::deserializer_t r({0x00, 0x01});
     ASSERT_FALSE(r.boolean());
     ASSERT_TRUE(r.boolean());
-    // Any byte != 1 decodes as false.
-    ASSERT_FALSE(r.boolean());
-    ASSERT_FALSE(r.boolean());
+}
+
+static void test_des_boolean_invalid_throws()
+{
+    {
+        Serialization::deserializer_t r({0x02});
+        ASSERT_THROWS_TYPE(r.boolean(), std::range_error);
+    }
+    {
+        Serialization::deserializer_t r({0xFF});
+        ASSERT_THROWS_TYPE(r.boolean(), std::range_error);
+    }
 }
 
 static void test_des_uint8_reads_each_byte()
@@ -284,7 +293,7 @@ static void test_des_compact_drops_consumed_bytes()
     // and the cursor is reset to 0, so the next read returns the first
     // unread byte directly.
     Serialization::deserializer_t r({0x01, 0x02, 0x03, 0x04});
-    (void)r.uint16();  // offset -> 2
+    (void)r.uint16(); // offset -> 2
     r.compact();
     ASSERT_EQ(r.size(), static_cast<size_t>(2));
     ASSERT_EQ(r.unread_bytes(), static_cast<size_t>(2));
@@ -410,7 +419,7 @@ static void test_des_podV_small_roundtrip()
 static void test_des_podVV_inflated_outer_count_throws()
 {
     Serialization::serializer_t w;
-    w.varint<uint32_t>(0xFFFFFFFFu);  // outer count huge
+    w.varint<uint32_t>(0xFFFFFFFFu); // outer count huge
     Serialization::deserializer_t r(w);
     ASSERT_THROWS_TYPE(r.podVV<unit_des::Pod8>(), std::range_error);
 }
@@ -418,8 +427,8 @@ static void test_des_podVV_inflated_outer_count_throws()
 static void test_des_podVV_inflated_inner_count_throws()
 {
     Serialization::serializer_t w;
-    w.varint<uint32_t>(1u);           // outer count = 1
-    w.varint<uint32_t>(0xFFFFFFFFu);  // inner count huge
+    w.varint<uint32_t>(1u); // outer count = 1
+    w.varint<uint32_t>(0xFFFFFFFFu); // inner count huge
     Serialization::deserializer_t r(w);
     ASSERT_THROWS_TYPE(r.podVV<unit_des::Pod8>(), std::range_error);
 }

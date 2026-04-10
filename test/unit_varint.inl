@@ -15,8 +15,7 @@
 
 namespace unit_vi
 {
-    template<typename T>
-    static void check_encode(T value, std::initializer_list<unsigned char> expected)
+    template<typename T> static void check_encode(T value, std::initializer_list<unsigned char> expected)
     {
         const auto e = Serialization::encode_varint<T>(value);
         ASSERT_EQ(e.size(), expected.size());
@@ -38,23 +37,45 @@ namespace unit_vi
         }
     }
 
-    template<typename T> static void check_single_byte_decode(
-        const std::vector<unsigned char> &buf, T expected_value, size_t expected_consumed)
+    template<typename T>
+    static void
+        check_single_byte_decode(const std::vector<unsigned char> &buf, T expected_value, size_t expected_consumed)
     {
         const auto [r, c] = Serialization::decode_varint<T>(buf);
         ASSERT_EQ(r, expected_value);
         ASSERT_EQ(c, expected_consumed);
     }
-}  // namespace unit_vi
+} // namespace unit_vi
 
 // ---------- encode spot layouts ----------
-static void test_encode_varint_zero_uint8() { unit_vi::check_encode<uint8_t>(0, {0x00}); }
-static void test_encode_varint_0x7f_uint8() { unit_vi::check_encode<uint8_t>(0x7F, {0x7F}); }
-static void test_encode_varint_0x80_uint8() { unit_vi::check_encode<uint8_t>(0x80, {0x80, 0x01}); }
-static void test_encode_varint_0xff_uint8() { unit_vi::check_encode<uint8_t>(0xFF, {0xFF, 0x01}); }
-static void test_encode_varint_0x3fff_uint16() { unit_vi::check_encode<uint16_t>(0x3FFF, {0xFF, 0x7F}); }
-static void test_encode_varint_0x4000_uint16() { unit_vi::check_encode<uint16_t>(0x4000, {0x80, 0x80, 0x01}); }
-static void test_encode_varint_0xffff_uint16() { unit_vi::check_encode<uint16_t>(0xFFFF, {0xFF, 0xFF, 0x03}); }
+static void test_encode_varint_zero_uint8()
+{
+    unit_vi::check_encode<uint8_t>(0, {0x00});
+}
+static void test_encode_varint_0x7f_uint8()
+{
+    unit_vi::check_encode<uint8_t>(0x7F, {0x7F});
+}
+static void test_encode_varint_0x80_uint8()
+{
+    unit_vi::check_encode<uint8_t>(0x80, {0x80, 0x01});
+}
+static void test_encode_varint_0xff_uint8()
+{
+    unit_vi::check_encode<uint8_t>(0xFF, {0xFF, 0x01});
+}
+static void test_encode_varint_0x3fff_uint16()
+{
+    unit_vi::check_encode<uint16_t>(0x3FFF, {0xFF, 0x7F});
+}
+static void test_encode_varint_0x4000_uint16()
+{
+    unit_vi::check_encode<uint16_t>(0x4000, {0x80, 0x80, 0x01});
+}
+static void test_encode_varint_0xffff_uint16()
+{
+    unit_vi::check_encode<uint16_t>(0xFFFF, {0xFF, 0xFF, 0x03});
+}
 
 // ---------- exhaustive round trips for narrow widths ----------
 static void test_varint_roundtrip_uint8_exhaustive()
@@ -83,17 +104,42 @@ static void test_varint_roundtrip_uint16_exhaustive()
 static void test_varint_roundtrip_uint32_grid()
 {
     unit_vi::check_roundtrip<uint32_t>(
-        {0u, 1u, 0x7Fu, 0x80u, 0x3FFFu, 0x4000u, 0x1FFFFFu, 0x200000u, 0xFFFFFFFu, 0x10000000u,
-         0x7FFFFFFFu, 0x80000000u, 0xFFFFFFFEu, 0xFFFFFFFFu});
+        {0u,
+         1u,
+         0x7Fu,
+         0x80u,
+         0x3FFFu,
+         0x4000u,
+         0x1FFFFFu,
+         0x200000u,
+         0xFFFFFFFu,
+         0x10000000u,
+         0x7FFFFFFFu,
+         0x80000000u,
+         0xFFFFFFFEu,
+         0xFFFFFFFFu});
 }
 
 static void test_varint_roundtrip_uint64_grid()
 {
     unit_vi::check_roundtrip<uint64_t>(
-        {0ULL, 1ULL, 0x7FULL, 0x80ULL, 0x3FFFULL, 0x4000ULL, 0x1FFFFFULL, 0xFFFFFFFFULL,
-         0x100000000ULL, 0xFFFFFFFFFFULL, 0x100000000000ULL, 0xFFFFFFFFFFFFFFULL,
-         0x0100000000000000ULL, 0x7FFFFFFFFFFFFFFFULL, 0x8000000000000000ULL,
-         0xFFFFFFFFFFFFFFFEULL, std::numeric_limits<uint64_t>::max()});
+        {0ULL,
+         1ULL,
+         0x7FULL,
+         0x80ULL,
+         0x3FFFULL,
+         0x4000ULL,
+         0x1FFFFFULL,
+         0xFFFFFFFFULL,
+         0x100000000ULL,
+         0xFFFFFFFFFFULL,
+         0x100000000000ULL,
+         0xFFFFFFFFFFFFFFULL,
+         0x0100000000000000ULL,
+         0x7FFFFFFFFFFFFFFFULL,
+         0x8000000000000000ULL,
+         0xFFFFFFFFFFFFFFFEULL,
+         std::numeric_limits<uint64_t>::max()});
 }
 
 // ---------- decode error paths ----------
@@ -144,8 +190,7 @@ static void test_decode_varint_shift_overflow_uint32()
 
 static void test_decode_varint_shift_overflow_uint64()
 {
-    std::vector<unsigned char> buf = {
-        0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01};
+    std::vector<unsigned char> buf = {0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x01};
     ASSERT_THROWS_TYPE(Serialization::decode_varint<uint64_t>(buf), std::range_error);
 }
 
@@ -223,37 +268,37 @@ static void test_decode_varint_uint8_multi_byte_rejected()
 // ---------- narrowing overflow into narrow types ----------
 static void test_decode_varint_uint8_overflow_two_byte()
 {
-    std::vector<unsigned char> buf = {0x80, 0x02};  // encodes 256
+    std::vector<unsigned char> buf = {0x80, 0x02}; // encodes 256
     ASSERT_THROWS_TYPE(Serialization::decode_varint<uint8_t>(buf), std::range_error);
 }
 
 static void test_decode_varint_uint8_overflow_top_bit_of_second()
 {
-    std::vector<unsigned char> buf = {0xFF, 0x02};  // encodes 0x17F
+    std::vector<unsigned char> buf = {0xFF, 0x02}; // encodes 0x17F
     ASSERT_THROWS_TYPE(Serialization::decode_varint<uint8_t>(buf), std::range_error);
 }
 
 static void test_decode_varint_uint16_overflow_three_byte()
 {
-    std::vector<unsigned char> buf = {0x80, 0x80, 0x04};  // encodes 0x10000
+    std::vector<unsigned char> buf = {0x80, 0x80, 0x04}; // encodes 0x10000
     ASSERT_THROWS_TYPE(Serialization::decode_varint<uint16_t>(buf), std::range_error);
 }
 
 static void test_decode_varint_uint32_overflow_five_byte()
 {
-    std::vector<unsigned char> buf = {0x80, 0x80, 0x80, 0x80, 0x10};  // encodes 0x100000000
+    std::vector<unsigned char> buf = {0x80, 0x80, 0x80, 0x80, 0x10}; // encodes 0x100000000
     ASSERT_THROWS_TYPE(Serialization::decode_varint<uint32_t>(buf), std::range_error);
 }
 
 static void test_decode_varint_uint8_max_decodes_ok()
 {
-    std::vector<unsigned char> buf = {0xFF, 0x01};  // 255
+    std::vector<unsigned char> buf = {0xFF, 0x01}; // 255
     unit_vi::check_single_byte_decode<uint8_t>(buf, static_cast<uint8_t>(0xFF), 2);
 }
 
 static void test_decode_varint_uint16_max_decodes_ok()
 {
-    std::vector<unsigned char> buf = {0xFF, 0xFF, 0x03};  // 65535
+    std::vector<unsigned char> buf = {0xFF, 0xFF, 0x03}; // 65535
     unit_vi::check_single_byte_decode<uint16_t>(buf, static_cast<uint16_t>(0xFFFF), 3);
 }
 
@@ -282,8 +327,8 @@ static void test_decode_varint_uint64_final_byte_high_bits_rejected()
 {
     for (unsigned char bad : {0x02u, 0x04u, 0x08u, 0x10u, 0x20u, 0x40u})
     {
-        std::vector<unsigned char> buf = {0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-                                          static_cast<unsigned char>(bad)};
+        std::vector<unsigned char> buf = {
+            0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, static_cast<unsigned char>(bad)};
         ASSERT_THROWS_TYPE(Serialization::decode_varint<uint64_t>(buf), std::range_error);
     }
 }

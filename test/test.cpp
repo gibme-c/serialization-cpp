@@ -36,7 +36,7 @@ struct vec_value_t : SerializablePod<32>
 {
     vec_value_t() = default;
 
-    explicit vec_value_t(const std::string &value) : SerializablePod<32>(value) {}
+    explicit vec_value_t(const std::string &value): SerializablePod<32>(value) {}
 
     explicit vec_value_t(const JSONValue &j)
     {
@@ -51,15 +51,15 @@ static const std::string test_hex = "974506601a60dc465e6e9acddb563889e63471849ec
 // Expanded unit test modules. Each file is a header-only fragment of static
 // test functions in its own topic area. Included after the shared helpers so
 // they can use value_t / vec_value_t / test_hex if needed.
-#include "unit_pack_unpack.inl"
-#include "unit_varint.inl"
-#include "unit_string_helper.inl"
-#include "unit_serializer.inl"
 #include "unit_deserializer.inl"
+#include "unit_json_helper.inl"
+#include "unit_pack_unpack.inl"
+#include "unit_secure_erase.inl"
 #include "unit_serializable_pod.inl"
 #include "unit_serializable_vector.inl"
-#include "unit_json_helper.inl"
-#include "unit_secure_erase.inl"
+#include "unit_serializer.inl"
+#include "unit_string_helper.inl"
+#include "unit_varint.inl"
 
 // ============================================================================
 // serializer_t + deserializer_t round-trips
@@ -276,8 +276,7 @@ void test_hex_write_read()
 // varint
 // ============================================================================
 
-template<typename T>
-static void varint_roundtrip(T value)
+template<typename T> static void varint_roundtrip(T value)
 {
     Serialization::serializer_t writer;
 
@@ -822,7 +821,7 @@ void test_svec_append_back()
 
     vec.append(a);
 
-    ASSERT_EQ(vec.size(), static_cast<size_t>(1));
+    ASSERT_EQ(vec.count(), static_cast<size_t>(1));
     ASSERT_EQ(vec.back().to_string(), test_hex);
 }
 
@@ -836,7 +835,7 @@ void test_svec_extend_vector()
 
     vec.extend(items);
 
-    ASSERT_EQ(vec.size(), static_cast<size_t>(2));
+    ASSERT_EQ(vec.count(), static_cast<size_t>(2));
     ASSERT_EQ(vec[0].to_string(), test_hex);
     ASSERT_EQ(vec[1].to_string(), std::string(64, '0'));
 }
@@ -853,7 +852,7 @@ void test_svec_extend_svec()
 
     vec1.extend(vec2);
 
-    ASSERT_EQ(vec1.size(), static_cast<size_t>(2));
+    ASSERT_EQ(vec1.count(), static_cast<size_t>(2));
 }
 
 void test_svec_serialize_deserialize()
@@ -869,7 +868,7 @@ void test_svec_serialize_deserialize()
 
     copy.deserialize(bytes);
 
-    ASSERT_EQ(copy.size(), static_cast<size_t>(2));
+    ASSERT_EQ(copy.count(), static_cast<size_t>(2));
     ASSERT_EQ(copy[0].to_string(), test_hex);
     ASSERT_EQ(copy[1].to_string(), std::string(64, '0'));
 }
@@ -921,7 +920,7 @@ void test_svec_json_roundtrip()
 
     copy.fromJSON(arr_val);
 
-    ASSERT_EQ(copy.size(), static_cast<size_t>(2));
+    ASSERT_EQ(copy.count(), static_cast<size_t>(2));
     ASSERT_EQ(copy[0].to_string(), test_hex);
     ASSERT_EQ(copy[1].to_string(), std::string(64, '0'));
 }
@@ -1077,6 +1076,10 @@ int main()
     RUN_TEST(test_pack_int32_negative_bytes_match_cast);
     RUN_TEST(test_pack_int64_min_roundtrip);
     RUN_TEST(test_pack_unsigned_char_roundtrip);
+    RUN_TEST(test_pack_uint128_le_layout);
+    RUN_TEST(test_pack_uint128_be_layout);
+    RUN_TEST(test_pack_uint256_le_layout);
+    RUN_TEST(test_pack_uint256_be_layout);
 
     SECTION("varint");
     RUN_TEST(test_encode_varint_zero_uint8);
@@ -1155,6 +1158,7 @@ int main()
     RUN_TEST(test_str_pad_zero_length);
     RUN_TEST(test_str_pad_empty_input);
     RUN_TEST(test_str_trim_basic);
+    RUN_TEST(test_str_trim_spaces_only);
     RUN_TEST(test_str_trim_only_tabs_and_newlines);
     RUN_TEST(test_str_trim_formfeed_vtab);
     RUN_TEST(test_str_trim_all_whitespace);
@@ -1205,7 +1209,8 @@ int main()
     RUN_TEST(test_des_ctor_from_empty_hex_string);
     RUN_TEST(test_des_ctor_from_odd_hex_throws);
     RUN_TEST(test_des_ctor_from_invalid_hex_throws);
-    RUN_TEST(test_des_boolean_reads_both_states);
+    RUN_TEST(test_des_boolean_valid_values);
+    RUN_TEST(test_des_boolean_invalid_throws);
     RUN_TEST(test_des_uint8_reads_each_byte);
     RUN_TEST(test_des_uint16_le_and_be);
     RUN_TEST(test_des_uint32_le_and_be);
@@ -1325,6 +1330,7 @@ int main()
     RUN_TEST(test_svec_distinct_instances_equal_when_content_matches);
     RUN_TEST(test_svec_to_string_roundtrip_matches);
     RUN_TEST(test_svec_many_elements_roundtrip);
+    RUN_TEST(test_svec_size_equals_serialize_size);
 
     SECTION("json_helper");
     RUN_TEST(test_json_has_member_true);

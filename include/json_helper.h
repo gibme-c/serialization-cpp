@@ -303,7 +303,7 @@ typedef rapidjson::GenericObject<
 typedef rapidjson::GenericValue<rapidjson::UTF8<char>, rapidjson::MemoryPoolAllocator<rapidjson::CrtAllocator>>
     JSONValue;
 
-static const std::string kTypeNames[] = {"Null", "False", "True", "Object", "Array", "String", "Number", "Double"};
+inline const std::string kTypeNames[] = {"Null", "False", "True", "Object", "Array", "String", "Number", "Double"};
 
 // -- Typed getter functions for pulling values out of RapidJSON documents --
 

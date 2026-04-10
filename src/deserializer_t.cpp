@@ -50,7 +50,12 @@ namespace Serialization
 
     bool deserializer_t::boolean(bool peek)
     {
-        return uint8(peek) == 1;
+        const auto val = uint8(peek);
+        if (val > 1)
+        {
+            throw std::range_error("invalid boolean byte value");
+        }
+        return val == 1;
     }
 
     std::vector<unsigned char> deserializer_t::bytes(size_t count, bool peek)

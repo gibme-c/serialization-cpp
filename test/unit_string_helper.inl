@@ -251,11 +251,16 @@ static void test_str_pad_empty_input()
 // ---------- str_trim ----------
 static void test_str_trim_basic()
 {
-    // NOTE: str_trim only trims \t\n\r\f\v — NOT spaces. This pins the
-    // current (documented-by-behavior) implementation.
     std::string s = "\t  hello  \n";
     Serialization::str_trim(s);
-    ASSERT_EQ(s, std::string("  hello  "));
+    ASSERT_EQ(s, std::string("hello"));
+}
+
+static void test_str_trim_spaces_only()
+{
+    std::string s = "     ";
+    Serialization::str_trim(s);
+    ASSERT_EQ(s, std::string(""));
 }
 
 static void test_str_trim_only_tabs_and_newlines()

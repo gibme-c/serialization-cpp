@@ -152,8 +152,25 @@ template<typename Type> struct SerializableVector : Serializable
         return writer.vector();
     }
 
-    /** Returns the element count (not byte size). */
+    /** Returns the serialized byte size (varint prefix + all elements). */
     [[nodiscard]] size_t size() const override
+    {
+        auto n = container.size();
+        size_t total = 1;
+        while (n >= 0x80)
+        {
+            n >>= 7;
+            ++total;
+        }
+        for (const auto &elem : container)
+        {
+            total += elem.size();
+        }
+        return total;
+    }
+
+    /** Returns the number of elements in the container. */
+    [[nodiscard]] size_t count() const
     {
         return container.size();
     }

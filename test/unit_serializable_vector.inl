@@ -21,26 +21,25 @@ namespace unit_svec
     struct V : SerializablePod<32>
     {
         V() = default;
-        explicit V(const std::string &s) : SerializablePod<32>(s) {}
+        explicit V(const std::string &s): SerializablePod<32>(s) {}
         explicit V(const JSONValue &j)
         {
             JSON_STRING_OR_THROW()
             from_string(j.GetString());
         }
     };
-}
+} // namespace unit_svec
 
-static const std::string k_svec_hex_a =
-    "974506601a60dc465e6e9acddb563889e63471849ec4198656550354b8541fcb";
-static const std::string k_svec_hex_b =
-    "0101010101010101010101010101010101010101010101010101010101010101";
+static const std::string k_svec_hex_a = "974506601a60dc465e6e9acddb563889e63471849ec4198656550354b8541fcb";
+static const std::string k_svec_hex_b = "0101010101010101010101010101010101010101010101010101010101010101";
 static const std::string k_svec_hex_z = std::string(64, '0');
 
 // ---------- default ctor empty ----------
 static void test_svec_default_empty()
 {
     SerializableVector<unit_svec::V> v;
-    ASSERT_EQ(v.size(), static_cast<size_t>(0));
+    ASSERT_EQ(v.count(), static_cast<size_t>(0));
+    ASSERT_EQ(v.size(), static_cast<size_t>(1));
 }
 
 // ---------- append / back ----------
@@ -51,7 +50,7 @@ static void test_svec_append_and_back()
     unit_svec::V b(k_svec_hex_b);
     v.append(a);
     v.append(b);
-    ASSERT_EQ(v.size(), static_cast<size_t>(2));
+    ASSERT_EQ(v.count(), static_cast<size_t>(2));
     ASSERT_TRUE(v.back() == b);
     ASSERT_TRUE(v[0] == a);
 }
@@ -62,7 +61,7 @@ static void test_svec_extend_vector_expanded()
     SerializableVector<unit_svec::V> v;
     std::vector<unit_svec::V> add = {unit_svec::V(k_svec_hex_a), unit_svec::V(k_svec_hex_b)};
     v.extend(add);
-    ASSERT_EQ(v.size(), static_cast<size_t>(2));
+    ASSERT_EQ(v.count(), static_cast<size_t>(2));
     ASSERT_TRUE(v[0] == add[0]);
     ASSERT_TRUE(v[1] == add[1]);
 }
@@ -75,7 +74,7 @@ static void test_svec_extend_svec_expanded()
     SerializableVector<unit_svec::V> b;
     b.append(unit_svec::V(k_svec_hex_b));
     a.extend(b);
-    ASSERT_EQ(a.size(), static_cast<size_t>(2));
+    ASSERT_EQ(a.count(), static_cast<size_t>(2));
     ASSERT_TRUE(a[1] == b[0]);
 }
 
@@ -154,7 +153,7 @@ static void test_svec_serialize_empty()
     ASSERT_EQ(bytes[0], 0x00);
     SerializableVector<unit_svec::V> copy;
     copy.deserialize(bytes);
-    ASSERT_EQ(copy.size(), static_cast<size_t>(0));
+    ASSERT_EQ(copy.count(), static_cast<size_t>(0));
 }
 
 // ---------- deserialize via reader ----------
@@ -185,7 +184,7 @@ static void test_svec_ctor_from_hex_string_roundtrip()
 static void test_svec_ctor_from_empty_hex_string()
 {
     SerializableVector<unit_svec::V> copy(std::string("00"));
-    ASSERT_EQ(copy.size(), static_cast<size_t>(0));
+    ASSERT_EQ(copy.count(), static_cast<size_t>(0));
 }
 
 static void test_svec_ctor_from_invalid_hex_throws()
@@ -201,7 +200,7 @@ static void test_svec_ctor_from_json_array_value()
     doc.Parse(js.c_str());
     ASSERT_FALSE(doc.HasParseError());
     SerializableVector<unit_svec::V> v(doc);
-    ASSERT_EQ(v.size(), static_cast<size_t>(2));
+    ASSERT_EQ(v.count(), static_cast<size_t>(2));
     ASSERT_EQ(v[0].to_string(), k_svec_hex_a);
     ASSERT_EQ(v[1].to_string(), k_svec_hex_b);
 }
@@ -217,7 +216,8 @@ static void test_svec_ctor_from_json_object_value_throws()
     // otherwise treat `SerializableVector<V>(doc)` as a variable declaration
     // shadowing `doc`.
     ASSERT_THROWS_TYPE(
-        [&]() {
+        [&]()
+        {
             SerializableVector<unit_svec::V> v(doc);
             (void)v;
         }(),
@@ -231,7 +231,7 @@ static void test_svec_ctor_from_json_by_key_array()
     doc.Parse(js.c_str());
     ASSERT_FALSE(doc.HasParseError());
     SerializableVector<unit_svec::V> v(doc, "items");
-    ASSERT_EQ(v.size(), static_cast<size_t>(1));
+    ASSERT_EQ(v.count(), static_cast<size_t>(1));
     ASSERT_EQ(v[0].to_string(), k_svec_hex_a);
 }
 
@@ -302,7 +302,7 @@ static void test_svec_fromJSON_empty_array()
     ASSERT_FALSE(doc.HasParseError());
     SerializableVector<unit_svec::V> v;
     v.fromJSON(doc);
-    ASSERT_EQ(v.size(), static_cast<size_t>(0));
+    ASSERT_EQ(v.count(), static_cast<size_t>(0));
 }
 
 static void test_svec_fromJSON_by_key()
@@ -313,7 +313,7 @@ static void test_svec_fromJSON_by_key()
     ASSERT_FALSE(doc.HasParseError());
     SerializableVector<unit_svec::V> v;
     v.fromJSON(doc, "items");
-    ASSERT_EQ(v.size(), static_cast<size_t>(2));
+    ASSERT_EQ(v.count(), static_cast<size_t>(2));
     ASSERT_EQ(v[0].to_string(), k_svec_hex_a);
     ASSERT_EQ(v[1].to_string(), k_svec_hex_b);
 }
@@ -361,7 +361,31 @@ static void test_svec_many_elements_roundtrip()
     SerializableVector<unit_svec::V> copy;
     copy.deserialize(bytes);
     ASSERT_TRUE(v == copy);
-    ASSERT_EQ(copy.size(), static_cast<size_t>(256));
+    ASSERT_EQ(copy.count(), static_cast<size_t>(256));
+}
+
+// ---------- size() returns serialized byte count ----------
+static void test_svec_size_equals_serialize_size()
+{
+    // Empty vector
+    {
+        SerializableVector<unit_svec::V> v;
+        ASSERT_EQ(v.size(), v.serialize().size());
+    }
+    // Single element
+    {
+        SerializableVector<unit_svec::V> v;
+        v.append(unit_svec::V(k_svec_hex_a));
+        ASSERT_EQ(v.size(), v.serialize().size());
+    }
+    // Multiple elements
+    {
+        SerializableVector<unit_svec::V> v;
+        v.append(unit_svec::V(k_svec_hex_a));
+        v.append(unit_svec::V(k_svec_hex_b));
+        v.append(unit_svec::V(k_svec_hex_z));
+        ASSERT_EQ(v.size(), v.serialize().size());
+    }
 }
 
 #endif

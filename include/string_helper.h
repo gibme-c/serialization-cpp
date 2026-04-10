@@ -33,7 +33,7 @@
 
 namespace Serialization
 {
-    /** Decodes a hex string (e.g. "4a6f") into raw bytes. */
+    /** Decodes a hex string into raw bytes. No upper bound is enforced on input length. */
     std::vector<unsigned char> from_hex(const std::string &text);
 
     /** Encodes raw bytes into a lowercase hex string. */

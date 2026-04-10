@@ -36,7 +36,8 @@
 
 namespace Serialization
 {
-    /** Converts any fixed-size type into a byte vector (optionally big-endian). */
+    /** Converts any fixed-size type into a byte vector in host-native byte order
+     *  (little-endian on x86/x64). Pass big_endian=true to reverse. */
     template<typename Type> std::vector<unsigned char> pack(const Type &value, bool big_endian = false)
     {
         static_assert(sizeof(Type) <= 64, "Type exceeds pack buffer size");
@@ -55,7 +56,8 @@ namespace Serialization
         return result;
     }
 
-    /** Reads a fixed-size type back out of a byte vector at the given offset. */
+    /** Reads a fixed-size type from a byte vector in host-native byte order.
+     *  Pass big_endian=true to reverse. */
     template<typename Type>
     Type unpack(const std::vector<unsigned char> &packed, size_t offset = 0, bool big_endian = false)
     {

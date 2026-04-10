@@ -29,10 +29,6 @@
 #include <stdexcept>
 #include <string_helper.h>
 
-#ifdef _MSC_VER
-#pragma warning(disable : 4244)
-#endif
-
 static const char hex_chars[16] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 
 static const unsigned char hex_values[256] = {
@@ -158,9 +154,13 @@ namespace Serialization
         return result;
     }
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4244)
+#endif
     void str_trim(std::string &str, bool to_lowercase)
     {
-        const auto whitespace = "\t\n\r\f\v";
+        const auto whitespace = " \t\n\r\f\v";
 
         str.erase(str.find_last_not_of(whitespace) + 1);
 
@@ -171,5 +171,8 @@ namespace Serialization
             std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) { return std::tolower(c); });
         }
     }
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 } // namespace Serialization

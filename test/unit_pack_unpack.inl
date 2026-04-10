@@ -33,8 +33,7 @@ namespace unit_pu
     }
 
     // Mass round-trip with a seeded xorshift; acts as an in-suite mini-fuzz.
-    template<typename T, typename State>
-    static void check_mass_roundtrip(State seed, int iters)
+    template<typename T, typename State> static void check_mass_roundtrip(State seed, int iters)
     {
         State state = seed;
         for (int i = 0; i < iters; ++i)
@@ -47,17 +46,41 @@ namespace unit_pu
             ASSERT_EQ(Serialization::unpack<T>(Serialization::pack<T>(v, true), 0, true), v);
         }
     }
-}  // namespace unit_pu
+} // namespace unit_pu
 
 // ---------- pack size across widths ----------
-static void test_pack_size_uint8() { unit_pu::check_pack_size<uint8_t>(); }
-static void test_pack_size_uint16() { unit_pu::check_pack_size<uint16_t>(); }
-static void test_pack_size_uint32() { unit_pu::check_pack_size<uint32_t>(); }
-static void test_pack_size_uint64() { unit_pu::check_pack_size<uint64_t>(); }
-static void test_pack_size_int8() { unit_pu::check_pack_size<int8_t>(); }
-static void test_pack_size_int16() { unit_pu::check_pack_size<int16_t>(); }
-static void test_pack_size_int32() { unit_pu::check_pack_size<int32_t>(); }
-static void test_pack_size_int64() { unit_pu::check_pack_size<int64_t>(); }
+static void test_pack_size_uint8()
+{
+    unit_pu::check_pack_size<uint8_t>();
+}
+static void test_pack_size_uint16()
+{
+    unit_pu::check_pack_size<uint16_t>();
+}
+static void test_pack_size_uint32()
+{
+    unit_pu::check_pack_size<uint32_t>();
+}
+static void test_pack_size_uint64()
+{
+    unit_pu::check_pack_size<uint64_t>();
+}
+static void test_pack_size_int8()
+{
+    unit_pu::check_pack_size<int8_t>();
+}
+static void test_pack_size_int16()
+{
+    unit_pu::check_pack_size<int16_t>();
+}
+static void test_pack_size_int32()
+{
+    unit_pu::check_pack_size<int32_t>();
+}
+static void test_pack_size_int64()
+{
+    unit_pu::check_pack_size<int64_t>();
+}
 
 // ---------- exhaustive round-trip for uint8 ----------
 static void test_pack_unpack_roundtrip_uint8_all()
@@ -72,37 +95,49 @@ static void test_pack_unpack_roundtrip_uint8_all()
 // ---------- sampled round-trip across widths ----------
 static void test_pack_unpack_roundtrip_uint16_grid()
 {
-    unit_pu::check_roundtrip_grid<uint16_t>(
-        {0, 1, 0x7F, 0x80, 0xFF, 0x100, 0x1234, 0x7FFF, 0x8000, 0xFFFE, 0xFFFF});
+    unit_pu::check_roundtrip_grid<uint16_t>({0, 1, 0x7F, 0x80, 0xFF, 0x100, 0x1234, 0x7FFF, 0x8000, 0xFFFE, 0xFFFF});
 }
 
 static void test_pack_unpack_roundtrip_uint32_grid()
 {
     unit_pu::check_roundtrip_grid<uint32_t>(
-        {0u, 1u, 0xFFu, 0x100u, 0xFFFFu, 0x10000u, 0xDEADBEEFu, 0x7FFFFFFFu, 0x80000000u,
-         0xFFFFFFFEu, 0xFFFFFFFFu});
+        {0u, 1u, 0xFFu, 0x100u, 0xFFFFu, 0x10000u, 0xDEADBEEFu, 0x7FFFFFFFu, 0x80000000u, 0xFFFFFFFEu, 0xFFFFFFFFu});
 }
 
 static void test_pack_unpack_roundtrip_uint64_grid()
 {
     unit_pu::check_roundtrip_grid<uint64_t>(
-        {0ULL, 1ULL, 0xFFULL, 0x100ULL, 0xFFFFULL, 0x10000ULL, 0xFFFFFFFFULL, 0x100000000ULL,
-         0xDEADBEEFCAFEBABEULL, 0x7FFFFFFFFFFFFFFFULL, 0x8000000000000000ULL,
-         0xFFFFFFFFFFFFFFFEULL, std::numeric_limits<uint64_t>::max()});
+        {0ULL,
+         1ULL,
+         0xFFULL,
+         0x100ULL,
+         0xFFFFULL,
+         0x10000ULL,
+         0xFFFFFFFFULL,
+         0x100000000ULL,
+         0xDEADBEEFCAFEBABEULL,
+         0x7FFFFFFFFFFFFFFFULL,
+         0x8000000000000000ULL,
+         0xFFFFFFFFFFFFFFFEULL,
+         std::numeric_limits<uint64_t>::max()});
 }
 
 static void test_pack_unpack_roundtrip_int8_grid()
 {
     unit_pu::check_roundtrip_grid<int8_t>(
-        {std::numeric_limits<int8_t>::min(), int8_t{-1}, int8_t{0}, int8_t{1},
-         std::numeric_limits<int8_t>::max()});
+        {std::numeric_limits<int8_t>::min(), int8_t {-1}, int8_t {0}, int8_t {1}, std::numeric_limits<int8_t>::max()});
 }
 
 static void test_pack_unpack_roundtrip_int16_grid()
 {
     unit_pu::check_roundtrip_grid<int16_t>(
-        {std::numeric_limits<int16_t>::min(), int16_t{-1234}, int16_t{-1}, int16_t{0},
-         int16_t{1}, int16_t{1234}, std::numeric_limits<int16_t>::max()});
+        {std::numeric_limits<int16_t>::min(),
+         int16_t {-1234},
+         int16_t {-1},
+         int16_t {0},
+         int16_t {1},
+         int16_t {1234},
+         std::numeric_limits<int16_t>::max()});
 }
 
 static void test_pack_unpack_roundtrip_int32_grid()
@@ -234,12 +269,12 @@ static void test_unpack_zero_offset_empty_type_should_fit()
 // ---------- mass round-trips (seeded) ----------
 static void test_pack_unpack_mass_roundtrip_uint64()
 {
-    unit_pu::check_mass_roundtrip<uint64_t>(uint64_t{0xC0FFEE123456789AULL}, 2048);
+    unit_pu::check_mass_roundtrip<uint64_t>(uint64_t {0xC0FFEE123456789AULL}, 2048);
 }
 
 static void test_pack_unpack_mass_roundtrip_int32()
 {
-    unit_pu::check_mass_roundtrip<int32_t>(uint32_t{0xABCDEF01u}, 2048);
+    unit_pu::check_mass_roundtrip<int32_t>(uint32_t {0xABCDEF01u}, 2048);
 }
 
 // ---------- endianness symmetry ----------
@@ -289,6 +324,52 @@ static void test_pack_int64_min_roundtrip()
 static void test_pack_unsigned_char_roundtrip()
 {
     unit_pu::check_roundtrip_grid<unsigned char>({static_cast<unsigned char>(0x5A)});
+}
+
+// ---------- uint128/uint256 byte-layout pinning ----------
+namespace unit_pu
+{
+    template<typename T>
+    static void check_layout(const T &value, bool big_endian, const std::vector<unsigned char> &expected)
+    {
+        const auto p = Serialization::pack<T>(value, big_endian);
+        ASSERT_EQ(p.size(), sizeof(T));
+        ASSERT_BYTES_EQ(p, expected);
+    }
+} // namespace unit_pu
+
+static void test_pack_uint128_le_layout()
+{
+    const uint128_t v(0x0102030405060708ULL, 0x090A0B0C0D0E0F10ULL);
+    unit_pu::check_layout(
+        v, false, {0x10, 0x0F, 0x0E, 0x0D, 0x0C, 0x0B, 0x0A, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01});
+}
+
+static void test_pack_uint128_be_layout()
+{
+    const uint128_t v(0x0102030405060708ULL, 0x090A0B0C0D0E0F10ULL);
+    unit_pu::check_layout(
+        v, true, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x10});
+}
+
+static void test_pack_uint256_le_layout()
+{
+    const uint256_t v(
+        uint128_t(0x0102030405060708ULL, 0x090A0B0C0D0E0F10ULL),
+        uint128_t(0x1112131415161718ULL, 0x191A1B1C1D1E1F20ULL));
+    unit_pu::check_layout(v, false, {0x20, 0x1F, 0x1E, 0x1D, 0x1C, 0x1B, 0x1A, 0x19, 0x18, 0x17, 0x16,
+                                     0x15, 0x14, 0x13, 0x12, 0x11, 0x10, 0x0F, 0x0E, 0x0D, 0x0C, 0x0B,
+                                     0x0A, 0x09, 0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01});
+}
+
+static void test_pack_uint256_be_layout()
+{
+    const uint256_t v(
+        uint128_t(0x0102030405060708ULL, 0x090A0B0C0D0E0F10ULL),
+        uint128_t(0x1112131415161718ULL, 0x191A1B1C1D1E1F20ULL));
+    unit_pu::check_layout(v, true, {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+                                    0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16,
+                                    0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20});
 }
 
 #endif

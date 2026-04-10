@@ -99,7 +99,7 @@ static void test_ser_bytes_ptr_len()
 static void test_ser_bytes_nullptr_zero_length_ok()
 {
     Serialization::serializer_t w;
-    w.bytes(nullptr, 0);  // must NOT throw
+    w.bytes(nullptr, 0); // must NOT throw
     ASSERT_EQ(w.size(), static_cast<size_t>(0));
 }
 
@@ -158,7 +158,7 @@ static void test_ser_hex_invalid_char_throws()
 static void test_ser_to_string_matches_hex()
 {
     Serialization::serializer_t w;
-    w.bytes(std::vector<unsigned char>{0xDE, 0xAD, 0xBE, 0xEF});
+    w.bytes(std::vector<unsigned char> {0xDE, 0xAD, 0xBE, 0xEF});
     ASSERT_EQ(w.to_string(), std::string("deadbeef"));
 }
 
@@ -166,7 +166,7 @@ static void test_ser_to_string_matches_hex()
 static void test_ser_operator_index_read()
 {
     Serialization::serializer_t w;
-    w.bytes(std::vector<unsigned char>{0x11, 0x22, 0x33});
+    w.bytes(std::vector<unsigned char> {0x11, 0x22, 0x33});
     ASSERT_EQ(w[0], 0x11);
     ASSERT_EQ(w[1], 0x22);
     ASSERT_EQ(w[2], 0x33);
@@ -175,7 +175,7 @@ static void test_ser_operator_index_read()
 static void test_ser_operator_index_write_mutation()
 {
     Serialization::serializer_t w;
-    w.bytes(std::vector<unsigned char>{0x11, 0x22, 0x33});
+    w.bytes(std::vector<unsigned char> {0x11, 0x22, 0x33});
     w[1] = 0xFF;
     ASSERT_EQ(w[1], 0xFF);
     ASSERT_EQ(w.vector()[1], 0xFF);
@@ -225,7 +225,7 @@ static void test_ser_vector_ctor()
 static void test_ser_data_pointer_content()
 {
     Serialization::serializer_t w;
-    w.bytes(std::vector<unsigned char>{0x10, 0x20, 0x30});
+    w.bytes(std::vector<unsigned char> {0x10, 0x20, 0x30});
     const auto *p = w.data();
     ASSERT_EQ(p[0], 0x10);
     ASSERT_EQ(p[1], 0x20);
@@ -256,12 +256,12 @@ static void test_ser_varint_vector_prefix_count_then_values()
 static void test_ser_mixed_write_chain()
 {
     Serialization::serializer_t w;
-    w.boolean(true);                                     // 1 byte
-    w.uint8(0xFF);                                       // 1 byte
-    w.uint16(0x1234);                                    // 2 bytes
-    w.uint32(0xDEADBEEFu);                               // 4 bytes
-    w.uint64(0x0123456789ABCDEFULL);                     // 8 bytes
-    w.bytes(std::vector<unsigned char>{0xAA, 0xBB, 0xCC}); // 3 bytes
+    w.boolean(true); // 1 byte
+    w.uint8(0xFF); // 1 byte
+    w.uint16(0x1234); // 2 bytes
+    w.uint32(0xDEADBEEFu); // 4 bytes
+    w.uint64(0x0123456789ABCDEFULL); // 8 bytes
+    w.bytes(std::vector<unsigned char> {0xAA, 0xBB, 0xCC}); // 3 bytes
     ASSERT_EQ(w.size(), static_cast<size_t>(19));
 }
 
@@ -286,7 +286,7 @@ static void test_ser_vector_returns_copy()
     Serialization::serializer_t w;
     w.uint32(0xCAFEBABE);
     auto v = w.vector();
-    v[0] = 0x00;  // mutating the returned copy must not affect w
+    v[0] = 0x00; // mutating the returned copy must not affect w
     ASSERT_NE(w.vector()[0], v[0]);
 }
 

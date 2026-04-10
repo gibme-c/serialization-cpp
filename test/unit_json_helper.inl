@@ -24,7 +24,7 @@ namespace unit_jh
         }
         return doc;
     }
-}  // namespace unit_jh
+} // namespace unit_jh
 
 // ---------- has_member ----------
 static void test_json_has_member_true()
@@ -367,7 +367,7 @@ namespace unit_json
             value = j.GetString();
         }
     };
-}
+} // namespace unit_json
 
 static void test_json_load_keyv_macro()
 {

@@ -21,7 +21,7 @@ namespace unit_pod
     using P32 = SerializablePod<32>;
     using P64 = SerializablePod<64>;
     using P128 = SerializablePod<128>;
-}
+} // namespace unit_pod
 
 // ---------- default ctor and empty() ----------
 static void test_pod_default_is_empty_sz8()
@@ -166,7 +166,7 @@ static void test_pod_equality_and_inequality()
 static void test_pod_lt_gt_le_ge()
 {
     unit_pod::P8 a, b;
-    a[7] = 0x01;  // highest-index byte is treated as most significant by the operator<
+    a[7] = 0x01; // highest-index byte is treated as most significant by the operator<
     b[7] = 0x02;
     ASSERT_TRUE(a < b);
     ASSERT_FALSE(b < a);
@@ -244,7 +244,7 @@ static void test_pod_fromJSON_string_round_trip()
 static void test_pod_fromJSON_non_string_throws()
 {
     rapidjson::Document doc;
-    doc.Parse("123");  // number, not string
+    doc.Parse("123"); // number, not string
     ASSERT_FALSE(doc.HasParseError());
     unit_pod::P32 p;
     ASSERT_THROWS_TYPE(p.fromJSON(doc), std::invalid_argument);
