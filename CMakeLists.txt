@@ -289,6 +289,8 @@ if(BUILD_FUZZ)
         fuzz/fuzz_json.cpp
         fuzz/fuzz_string_helper.cpp
         fuzz/fuzz_roundtrip.cpp
+        fuzz/fuzz_mixed_roundtrip.cpp
+        fuzz/fuzz_cursor_ops.cpp
     )
 
     foreach(_fuzz_src IN LISTS _fuzz_sources)

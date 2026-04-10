@@ -52,11 +52,15 @@ static const std::string test_hex = "974506601a60dc465e6e9acddb563889e63471849ec
 // test functions in its own topic area. Included after the shared helpers so
 // they can use value_t / vec_value_t / test_hex if needed.
 #include "unit_deserializer.inl"
+#include "unit_deserializer_extended.inl"
 #include "unit_json_helper.inl"
+#include "unit_mixed_streams.inl"
 #include "unit_pack_unpack.inl"
 #include "unit_secure_erase.inl"
 #include "unit_serializable_pod.inl"
+#include "unit_serializable_pod_extended.inl"
 #include "unit_serializable_vector.inl"
+#include "unit_serializable_vector_extended.inl"
 #include "unit_serializer.inl"
 #include "unit_string_helper.inl"
 #include "unit_varint.inl"
@@ -1383,6 +1387,57 @@ int main()
     RUN_TEST(test_secure_erase_large_buffer);
     RUN_TEST(test_secure_erase_zero_length_is_noop);
     RUN_TEST(test_secure_erase_unaligned_offset);
+
+    SECTION("deserializer_t (peek + cursor extended)");
+    RUN_TEST(test_des_ext_peek_uint16);
+    RUN_TEST(test_des_ext_peek_uint64);
+    RUN_TEST(test_des_ext_peek_uint128);
+    RUN_TEST(test_des_ext_peek_uint256);
+    RUN_TEST(test_des_ext_peek_boolean);
+    RUN_TEST(test_des_ext_peek_hex);
+    RUN_TEST(test_des_ext_peek_varintV);
+    RUN_TEST(test_des_ext_peek_podV);
+    RUN_TEST(test_des_ext_peek_podVV);
+    RUN_TEST(test_des_ext_mixed_endian_interleaved);
+    RUN_TEST(test_des_ext_mixed_endian_uint128_uint256);
+    RUN_TEST(test_des_ext_compact_chain);
+    RUN_TEST(test_des_ext_compact_three_stages);
+    RUN_TEST(test_des_ext_reset_past_size_read_throws);
+    RUN_TEST(test_des_ext_reset_past_size_skip_throws);
+    RUN_TEST(test_des_ext_reset_after_compact);
+    RUN_TEST(test_des_ext_compact_after_reset_to_zero);
+    RUN_TEST(test_des_ext_errmsg_read_past_end);
+    RUN_TEST(test_des_ext_errmsg_skip_past_end);
+    RUN_TEST(test_des_ext_errmsg_boolean_invalid);
+    RUN_TEST(test_des_ext_interleaved_peek_skip_consume);
+
+    SECTION("mixed-type streams");
+    RUN_TEST(test_mixed_all_types_roundtrip);
+    RUN_TEST(test_mixed_interleaved_endian);
+    RUN_TEST(test_mixed_varints_and_pods);
+    RUN_TEST(test_mixed_large_stress_500);
+    RUN_TEST(test_mixed_1000_varints);
+
+    SECTION("SerializablePod (copy/cmp extended)");
+    RUN_TEST(test_pod_ext_copy_ctor);
+    RUN_TEST(test_pod_ext_copy_ctor_independent);
+    RUN_TEST(test_pod_ext_copy_assignment);
+    RUN_TEST(test_pod_ext_copy_assignment_self);
+    RUN_TEST(test_pod_ext_copy_assignment_independent);
+    RUN_TEST(test_pod_ext_cmp_size1_less);
+    RUN_TEST(test_pod_ext_cmp_size1_equal);
+    RUN_TEST(test_pod_ext_cmp_all_ff_equal);
+    RUN_TEST(test_pod_ext_cmp_transitivity);
+    RUN_TEST(test_pod_ext_cmp_antisymmetry);
+
+    SECTION("SerializableVector (podVV + varint boundary)");
+    RUN_TEST(test_svec_ext_podVV_valid_roundtrip);
+    RUN_TEST(test_svec_ext_podVV_inner_empty);
+    RUN_TEST(test_svec_ext_podVV_mixed_sizes);
+    RUN_TEST(test_svec_ext_pod_empty_nested);
+    RUN_TEST(test_svec_ext_size_boundary_127);
+    RUN_TEST(test_svec_ext_size_boundary_128);
+    RUN_TEST(test_svec_ext_size_consistency_multiple);
 
     return test_summary();
 }
