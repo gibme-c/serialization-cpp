@@ -24,7 +24,7 @@ git clone --recursive https://github.com/gibme-c/serialization-cpp
 cd serialization-cpp
 
 # Configure and build
-cmake -S . -B build -DBUILD_TEST=ON
+cmake -S . -B build -DSERIALIZATION_BUILD_TESTS=ON
 cmake --build build --config Release -j
 
 # Run tests
@@ -36,9 +36,12 @@ cmake --build build --config Release -j
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `BUILD_TEST` | `OFF` | Build the unit test executable (`serialization-tests`) |
-| `ARCH` | `native` | Target CPU architecture for `-march` (`native`, `default`, or a specific arch) |
-| `CMAKE_BUILD_TYPE` | `Release` | `Debug`, `Release`, or `RelWithDebInfo` |
+| `SERIALIZATION_BUILD_TESTS` | `OFF` | Build the unit test executable (`serialization-tests`) |
+| `SERIALIZATION_BUILD_FUZZ`  | `OFF` | Build the portable in-process fuzz harnesses |
+| `SERIALIZATION_SANITIZE`    | `none` | Enable a sanitizer on tests/fuzz targets (`none`, `address`, `undefined`, `thread`, `address+undefined`). GCC/Clang only; no effect on MSVC. |
+| `CMAKE_BUILD_TYPE`          | `Release` | `Debug`, `Release`, or `RelWithDebInfo` |
+
+All three `SERIALIZATION_*` options are only defined when this project is the top-level CMake project. When consumed via `add_subdirectory()`, they are force-off and do nothing — downstream consumers never build our tests or fuzz harnesses.
 
 ### As a Dependency
 
@@ -166,7 +169,7 @@ Both are included as git submodules under `external/`.
 
 ## Testing
 
-Build with `-DBUILD_TEST=ON` to get the `serialization-tests` executable. The test suite covers:
+Build with `-DSERIALIZATION_BUILD_TESTS=ON` to get the `serialization-tests` executable. The test suite covers:
 
 - **Round-trip tests** — serialize then deserialize for all primitive types (uint8 through uint256, boolean, bytes, hex, varint) in both little-endian and big-endian
 - **Pod tests** — `SerializablePod` serialization, JSON round-trip, comparison operators, hex construction

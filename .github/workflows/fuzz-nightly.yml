@@ -1,0 +1,172 @@
+name: Fuzz Nightly
+
+# ---------------------------------------------------------------------------
+# Nightly long-run pass over the portable in-process fuzz harnesses.
+#
+# The PR-time ci.yml workflow builds every fuzz target on every matrix cell
+# with the default 5k-iter smoke budget (via CTest), which catches the
+# shallow bugs in seconds. This workflow is the long tail: every night it
+# invokes each fuzz binary directly with a 1M-iter budget and a fresh
+# random seed so we explore deeper paths than the smoke run can reach.
+#
+# The harnesses are pure-C++ PRNG-driven (no libFuzzer / compiler-rt
+# dependency), so this workflow doesn't need Linux+Clang like libFuzzer
+# jobs do. It runs on Ubuntu with clang-15 + ASan+UBSan, which is where
+# the sanitizers give the most signal.
+#
+# Escalation rule: any finding surfaced by this workflow must be triaged.
+# The workflow automatically files a GitHub issue with the failing target
+# and seed on failure via the gh CLI — it does NOT silently patch library
+# code.
+# ---------------------------------------------------------------------------
+
+on:
+  schedule:
+    # 04:00 UTC every night.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+    inputs:
+      fuzz_iters:
+        description: 'Iterations per fuzz target'
+        required: false
+        default: '1000000'
+      fuzz_seed:
+        description: 'Base PRNG seed (hex ok). Default: derived from run_id'
+        required: false
+        default: ''
+
+jobs:
+  fuzz:
+    name: Portable fuzz long run
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      SERIALIZE_FUZZ_ITERS: ${{ github.event.inputs.fuzz_iters || '1000000' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install clang-15 toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-15 lld-15 cmake ninja-build
+          echo "CC=clang-15"   >> "$GITHUB_ENV"
+          echo "CXX=clang++-15" >> "$GITHUB_ENV"
+
+      - name: Derive base seed
+        id: seed
+        run: |
+          if [ -n "${{ github.event.inputs.fuzz_seed }}" ]; then
+            SEED="${{ github.event.inputs.fuzz_seed }}"
+          else
+            # Stable-per-run seed derived from run_id so failures are
+            # reproducible from the run metadata alone.
+            SEED="0x$(printf '%016x' ${{ github.run_id }})"
+          fi
+          echo "seed=$SEED" >> "$GITHUB_OUTPUT"
+          echo "Base seed: $SEED"
+
+      - name: Configure (asan+ubsan)
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER="$CC" \
+            -DCMAKE_CXX_COMPILER="$CXX" \
+            -DSERIALIZATION_BUILD_TESTS=ON \
+            -DSERIALIZATION_BUILD_FUZZ=ON \
+            -DSERIALIZATION_SANITIZE=address+undefined
+
+      - name: Build
+        run: cmake --build build -j $(nproc)
+
+      - name: Run unit tests (sanitized)
+        # Cheap sanity check before we spend real wall-clock on fuzz.
+        # If the ASan+UBSan unit tests fail, don't bother with the long run.
+        working-directory: build
+        run: ctest --output-on-failure -R serialization-tests
+
+      - name: Run per-target long fuzz pass
+        id: fuzz
+        env:
+          SERIALIZE_FUZZ_SEED: ${{ steps.seed.outputs.seed }}
+          # ASan exit code must be non-zero on any finding.
+          ASAN_OPTIONS: abort_on_error=0:halt_on_error=1:print_summary=1:detect_leaks=1
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+        run: |
+          set +e
+          FAIL=0
+          FAILURES=""
+          shopt -s nullglob
+          # Fuzz binaries live at build/fuzz_* per CMakeLists.txt
+          # (RUNTIME_OUTPUT_DIRECTORY = build root on single-config Ninja).
+          BINS=( build/fuzz_* )
+          if [ ${#BINS[@]} -eq 0 ]; then
+            echo "No fuzz binaries found under build/ — build step likely failed."
+            exit 2
+          fi
+          for bin in "${BINS[@]}"; do
+            [ -x "$bin" ] || continue
+            target="$(basename "$bin")"
+            echo "---- $target (iters=$SERIALIZE_FUZZ_ITERS seed=$SERIALIZE_FUZZ_SEED) ----"
+            "$bin"
+            rc=$?
+            if [ "$rc" -ne 0 ]; then
+              FAIL=1
+              FAILURES="$FAILURES $target(rc=$rc)"
+            fi
+          done
+          if [ "$FAIL" -ne 0 ]; then
+            echo "failures=$FAILURES" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: Upload build artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-nightly-build-${{ github.run_id }}
+          path: |
+            build/fuzz_*
+            build/CMakeFiles/CMakeOutput.log
+            build/CMakeFiles/CMakeError.log
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Open tracking issue on failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Per the project's fuzz-finding rule, any fault surfaced by this
+        # nightly workflow MUST be triaged by the repository owner before
+        # any library or harness code is changed. This step opens a GitHub
+        # issue with a direct link to the failing workflow run and the
+        # exact seed required to reproduce the finding.
+        run: |
+          TITLE="Nightly fuzz finding on ${{ github.workflow }} run ${{ github.run_id }}"
+          BODY="A nightly fuzz run produced a finding that needs triage.
+
+          **Workflow run:** <https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}>
+          **Failed targets:** ${{ steps.fuzz.outputs.failures }}
+          **Reproduce locally:**
+          \`\`\`
+          cmake -S . -B build -G Ninja \\
+              -DCMAKE_BUILD_TYPE=Release \\
+              -DSERIALIZATION_BUILD_TESTS=ON \\
+              -DSERIALIZATION_BUILD_FUZZ=ON \\
+              -DSERIALIZATION_SANITIZE=address+undefined
+          cmake --build build -j
+          SERIALIZE_FUZZ_ITERS=${{ env.SERIALIZE_FUZZ_ITERS }} \\
+          SERIALIZE_FUZZ_SEED=${{ steps.seed.outputs.seed }} \\
+              build/<failing-fuzz-target>
+          \`\`\`
+
+          Do NOT silently fix the library. Triage first to decide whether this is a library bug, a harness bug, or accepted behavior, then proceed with remediation."
+          gh issue create \
+            --title "$TITLE" \
+            --body "$BODY" \
+            --label "fuzz-finding,nightly" \
+            || echo "(failed to open issue — check repository labels/permissions)"

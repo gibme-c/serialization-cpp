@@ -5,68 +5,96 @@ project(serializationcpp VERSION 2.0.0 LANGUAGES CXX)
 include(CheckCXXCompilerFlag)
 include(CheckCXXSourceCompiles)
 
-# Default to Release for single-config generators
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+# Top-level detection. Tests, fuzzers, the sanitizer option, enable_testing(),
+# and the Release default all stay behind this gate so a downstream consumer
+# pulling us in via add_subdirectory() gets nothing but the library target.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    set(SERIALIZATION_IS_TOP_LEVEL ON)
+else()
+    set(SERIALIZATION_IS_TOP_LEVEL OFF)
 endif()
 
-message(STATUS "Mode: ${CMAKE_BUILD_TYPE}")
+if(SERIALIZATION_IS_TOP_LEVEL)
+    # Default to Release for single-config generators — only when we own the
+    # build. Never override a parent project's choice of build type.
+    if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+        set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+    endif()
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    message(STATUS "serialization-cpp mode: ${CMAKE_BUILD_TYPE}")
 
-# ccache support
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
-    message(STATUS "Found ccache package... Activating...")
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+
+    # ccache support — only when top-level so we don't silently set a
+    # launcher on a parent project that didn't ask for one.
+    find_program(CCACHE_PROGRAM ccache)
+    if(CCACHE_PROGRAM)
+        message(STATUS "Found ccache package... Activating...")
+        set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+        set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    endif()
 endif()
 
-option(BUILD_TEST "Build test binary" OFF)
-if(DEFINED ENV{BUILD_TEST})
-    set(BUILD_TEST $ENV{BUILD_TEST})
-endif()
-if(BUILD_TEST)
-    message(STATUS "Test binary added to targets list")
-endif()
+# Options are project-namespaced so they can't collide with a parent project's
+# BUILD_TEST / BUILD_FUZZ / SANITIZE. They are only defined and honored when
+# we're the top-level project — consumers using add_subdirectory() never get
+# our tests or fuzz harnesses, period.
+if(SERIALIZATION_IS_TOP_LEVEL)
+    option(SERIALIZATION_BUILD_TESTS "Build serialization-cpp unit tests" OFF)
+    if(DEFINED ENV{SERIALIZATION_BUILD_TESTS})
+        set(SERIALIZATION_BUILD_TESTS $ENV{SERIALIZATION_BUILD_TESTS})
+    endif()
+    if(SERIALIZATION_BUILD_TESTS)
+        message(STATUS "serialization-cpp: unit tests enabled")
+    endif()
 
-option(BUILD_FUZZ "Build portable in-process fuzz harnesses" OFF)
-if(DEFINED ENV{BUILD_FUZZ})
-    set(BUILD_FUZZ $ENV{BUILD_FUZZ})
-endif()
-if(BUILD_FUZZ)
-    message(STATUS "Fuzz harnesses added to targets list")
-endif()
+    option(SERIALIZATION_BUILD_FUZZ "Build portable in-process fuzz harnesses" OFF)
+    if(DEFINED ENV{SERIALIZATION_BUILD_FUZZ})
+        set(SERIALIZATION_BUILD_FUZZ $ENV{SERIALIZATION_BUILD_FUZZ})
+    endif()
+    if(SERIALIZATION_BUILD_FUZZ)
+        message(STATUS "serialization-cpp: fuzz harnesses enabled")
+    endif()
 
-# Sanitizer selection for tests and fuzzers (not the static library).
-# Applied PRIVATE so downstream consumers are unaffected. GCC/Clang only.
-set(SANITIZE "none" CACHE STRING "Sanitizer: none|address|undefined|thread|address+undefined")
-set_property(CACHE SANITIZE PROPERTY STRINGS none address undefined thread address+undefined)
-if(NOT SANITIZE STREQUAL "none")
-    message(STATUS "Sanitizer enabled for test/fuzz targets: ${SANITIZE}")
+    # Sanitizer selection for tests and fuzzers (not the static library
+    # when consumed downstream). Applied PRIVATE so downstream consumers
+    # are unaffected. GCC/Clang only.
+    set(SERIALIZATION_SANITIZE "none" CACHE STRING
+        "Sanitizer: none|address|undefined|thread|address+undefined")
+    set_property(CACHE SERIALIZATION_SANITIZE PROPERTY STRINGS
+        none address undefined thread address+undefined)
+    if(NOT SERIALIZATION_SANITIZE STREQUAL "none")
+        message(STATUS "serialization-cpp: sanitizer enabled for test/fuzz targets: ${SERIALIZATION_SANITIZE}")
+    endif()
+else()
+    # Force-off when consumed as a subdirectory. No test/fuzz targets, no
+    # sanitizer flags, no CTest registration.
+    set(SERIALIZATION_BUILD_TESTS OFF)
+    set(SERIALIZATION_BUILD_FUZZ OFF)
+    set(SERIALIZATION_SANITIZE "none")
 endif()
 
 # Helper: apply the selected sanitizer to a single target. No-op on MSVC or
 # when SANITIZE=none. Always PRIVATE — never leaks to downstream.
 function(serialization_apply_sanitizer tgt)
-    if(SANITIZE STREQUAL "none")
+    if(SERIALIZATION_SANITIZE STREQUAL "none")
         return()
     endif()
     if(NOT (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
         OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
         OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang"))
-        message(STATUS "SANITIZE=${SANITIZE} requested but compiler "
+        message(STATUS "SERIALIZATION_SANITIZE=${SERIALIZATION_SANITIZE} requested but compiler "
             "${CMAKE_CXX_COMPILER_ID} does not support it; ignoring for target ${tgt}")
         return()
     endif()
     set(_san_flags "")
-    if(SANITIZE MATCHES "address")
+    if(SERIALIZATION_SANITIZE MATCHES "address")
         list(APPEND _san_flags -fsanitize=address -fno-omit-frame-pointer)
     endif()
-    if(SANITIZE MATCHES "undefined")
+    if(SERIALIZATION_SANITIZE MATCHES "undefined")
         list(APPEND _san_flags -fsanitize=undefined -fno-sanitize-recover=undefined)
     endif()
-    if(SANITIZE STREQUAL "thread")
+    if(SERIALIZATION_SANITIZE STREQUAL "thread")
         list(APPEND _san_flags -fsanitize=thread)
     endif()
     target_compile_options(${tgt} PRIVATE ${_san_flags})
@@ -75,7 +103,7 @@ function(serialization_apply_sanitizer tgt)
     # MSVC STL's string/vector annotations so every TU agrees on the container
     # layout. Without this, link fails with /failifmismatch on 'annotate_string'
     # because ASan adds metadata the uninstrumented STL objects lack.
-    if(WIN32 AND SANITIZE MATCHES "address")
+    if(WIN32 AND SERIALIZATION_SANITIZE MATCHES "address")
         target_compile_definitions(${tgt} PRIVATE
             _DISABLE_STRING_ANNOTATION=1
             _DISABLE_VECTOR_ANNOTATION=1)
@@ -128,10 +156,26 @@ set(_is_release "$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSiz
 # Dependencies
 # The uint256_t subproject defaults its own BUILD_TESTS option to ON, which would
 # unconditionally build upstream's uint256-tests executable even when we only want
-# our own test binary. Force it off before pulling the subdirectory in — their
-# tests are not part of serialization-cpp's build surface.
+# our own test binary. We must force it off before pulling the subdirectory in —
+# but if the *parent* project (the one consuming serialization-cpp) happens to use
+# a cache var named BUILD_TESTS for its own purposes, we must not clobber it.
+# Save, override, add_subdirectory, then restore.
+get_property(_serial_prev_BUILD_TESTS_type CACHE BUILD_TESTS PROPERTY TYPE)
+if(_serial_prev_BUILD_TESTS_type)
+    get_property(_serial_prev_BUILD_TESTS_value CACHE BUILD_TESTS PROPERTY VALUE)
+    get_property(_serial_prev_BUILD_TESTS_help  CACHE BUILD_TESTS PROPERTY HELPSTRING)
+endif()
 set(BUILD_TESTS OFF CACHE BOOL "Disable uint256_t upstream tests" FORCE)
 add_subdirectory(external/uint256_t)
+if(_serial_prev_BUILD_TESTS_type)
+    set(BUILD_TESTS "${_serial_prev_BUILD_TESTS_value}"
+        CACHE "${_serial_prev_BUILD_TESTS_type}" "${_serial_prev_BUILD_TESTS_help}" FORCE)
+else()
+    unset(BUILD_TESTS CACHE)
+endif()
+unset(_serial_prev_BUILD_TESTS_type)
+unset(_serial_prev_BUILD_TESTS_value)
+unset(_serial_prev_BUILD_TESTS_help)
 set_property(TARGET uint256t PROPERTY FOLDER "external/uint256")
 
 # Library
@@ -254,7 +298,7 @@ endif()
 serialization_apply_sanitizer(serialization-static)
 
 # Tests
-if(BUILD_TEST)
+if(SERIALIZATION_BUILD_TESTS)
     enable_testing()
 
     add_executable(serialization-tests test/test.cpp)
@@ -275,7 +319,7 @@ if(BUILD_TEST)
 endif()
 
 # Fuzz harnesses
-if(BUILD_FUZZ)
+if(SERIALIZATION_BUILD_FUZZ)
     enable_testing()
 
     set(_fuzz_sources
